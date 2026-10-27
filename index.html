@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PAD — Healthcare Fraud Detection AI · PM Case Study</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:    #0d1b2e;
+      --navy-2:  #112240;
+      --navy-3:  #1a3556;
+      --blue:    #1565c0;
+      --blue-lt: #1976d2;
+      --teal:    #00838f;
+      --indigo:  #3949ab;
+      --amber:   #e65100;
+      --text:    #cdd8e8;
+      --muted:   #8fa3be;
+      --border:  #1f3a5f;
+      --card-bg: #112240;
+      --tag-bg:  #1a3556;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--navy);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ── Nav ── */
+    nav {
+      background: var(--navy-2);
+      border-bottom: 1px solid var(--border);
+      padding: 0 40px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .nav-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--blue-lt);
+    }
+    .nav-brand { font-size: 14px; font-weight: 600; color: var(--text); letter-spacing: 0.02em; }
+    .nav-sub   { font-size: 13px; color: var(--muted); }
+
+    /* ── Hero ── */
+    .hero {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 72px 40px 56px;
+    }
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--blue-lt);
+      margin-bottom: 20px;
+    }
+    .hero-eyebrow span {
+      display: inline-block;
+      width: 24px; height: 1px;
+      background: var(--blue-lt);
+    }
+    h1 {
+      font-size: 38px;
+      font-weight: 700;
+      color: #e8f0fb;
+      line-height: 1.2;
+      margin-bottom: 16px;
+      letter-spacing: -0.02em;
+    }
+    h1 em {
+      font-style: normal;
+      color: var(--blue-lt);
+    }
+    .hero-sub {
+      font-size: 17px;
+      color: var(--muted);
+      max-width: 620px;
+      margin-bottom: 32px;
+    }
+    .hero-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .tag {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 4px;
+      background: var(--tag-bg);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    /* ── Divider ── */
+    .divider {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 40px;
+      border-top: 1px solid var(--border);
+      margin-bottom: 0;
+    }
+
+    /* ── Section ── */
+    section {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 48px 40px;
+    }
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--blue-lt);
+      margin-bottom: 24px;
+    }
+
+    /* ── Mock Cards ── */
+    .mock-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 680px) { .mock-grid { grid-template-columns: 1fr; } }
+
+    .mock-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .mock-card:hover {
+      border-color: var(--blue-lt);
+      box-shadow: 0 4px 24px rgba(21,101,192,0.18);
+    }
+    .mock-preview {
+      background: var(--navy-3);
+      padding: 20px 20px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-end;
+      gap: 0;
+      min-height: 130px;
+      overflow: hidden;
+      position: relative;
+    }
+    /* Fake browser chrome */
+    .browser-chrome {
+      background: #0d1b2e;
+      border-radius: 6px 6px 0 0;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      width: 100%;
+      overflow: hidden;
+    }
+    .browser-bar {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .browser-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+    }
+    .browser-dot-r { background: #e57373; }
+    .browser-dot-y { background: #ffb74d; }
+    .browser-dot-g { background: #81c784; }
+    .browser-url {
+      flex: 1;
+      background: #1a3556;
+      border-radius: 3px;
+      height: 14px;
+      margin-left: 6px;
+    }
+    .browser-body { padding: 10px; }
+
+    /* Investigator queue preview (left card) */
+    .preview-topnav {
+      background: #112240;
+      border-radius: 3px 3px 0 0;
+      padding: 5px 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .preview-nav-dot { width: 5px; height: 5px; border-radius: 50%; background: #1976d2; }
+    .preview-nav-text { font-size: 8px; font-weight: 600; color: #cdd8e8; }
+    .preview-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 6px;
+      border-radius: 3px;
+      margin-bottom: 3px;
+      font-size: 8px;
+    }
+    .preview-row-high { background: rgba(229,57,53,0.12); }
+    .preview-row-med  { background: rgba(230,81,0,0.10); }
+    .preview-badge {
+      font-size: 7px;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .badge-high { background: rgba(229,57,53,0.25); color: #ef9a9a; }
+    .badge-med  { background: rgba(230,81,0,0.25);  color: #ffcc80; }
+    .preview-name { color: #cdd8e8; flex: 1; }
+    .preview-score { color: #8fa3be; }
+
+    /* Monitoring preview (right card) */
+    .preview-stat-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .preview-stat {
+      flex: 1;
+      background: #1a3556;
+      border-radius: 3px;
+      padding: 5px 6px;
+    }
+    .preview-stat-val { font-size: 11px; font-weight: 700; color: #e8f0fb; }
+    .preview-stat-lbl { font-size: 7px; color: #8fa3be; }
+    .preview-chart-bar {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 28px;
+    }
+    .preview-bar {
+      flex: 1;
+      border-radius: 2px 2px 0 0;
+      background: rgba(21,101,192,0.5);
+    }
+    .preview-bar-hi { background: rgba(21,101,192,0.85); }
+
+    .mock-body {
+      padding: 20px 22px 22px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .mock-type {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .mock-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #e8f0fb;
+      margin-bottom: 8px;
+      line-height: 1.3;
+    }
+    .mock-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 16px;
+      flex: 1;
+    }
+    .mock-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--blue-lt);
+      text-decoration: none;
+    }
+    .mock-card:hover .mock-cta { text-decoration: underline; }
+    .mock-cta-arrow { font-size: 15px; transition: transform 0.12s; }
+    .mock-card:hover .mock-cta-arrow { transform: translateX(3px); }
+
+    /* ── Artifact Grid ── */
+    .artifact-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+    @media (max-width: 680px) { .artifact-grid { grid-template-columns: 1fr; } }
+
+    .artifact-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 18px 20px;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: border-color 0.15s;
+    }
+    .artifact-card:hover { border-color: #2d5a8a; }
+    .artifact-icon { font-size: 18px; }
+    .artifact-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #e8f0fb;
+      line-height: 1.35;
+    }
+    .artifact-desc {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+      flex: 1;
+    }
+    .artifact-link {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--blue-lt);
+      margin-top: 4px;
+    }
+
+    /* ── Context strip ── */
+    .context-strip {
+      background: var(--navy-2);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .context-strip-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 28px 40px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+    }
+    @media (max-width: 680px) { .context-strip-inner { grid-template-columns: repeat(2, 1fr); } }
+    .context-stat-val {
+      font-size: 22px;
+      font-weight: 800;
+      color: #e8f0fb;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .context-stat-lbl { font-size: 12px; color: var(--muted); }
+
+    /* ── Footer ── */
+    footer {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 40px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .footer-name { font-size: 14px; font-weight: 600; color: #e8f0fb; }
+    .footer-role { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .footer-links { display: flex; gap: 20px; }
+    .footer-links a {
+      font-size: 13px;
+      color: var(--blue-lt);
+      text-decoration: none;
+    }
+    .footer-links a:hover { text-decoration: underline; }
+    .footer-note {
+      font-size: 11px;
+      color: #4a6480;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 40px 32px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav>
+    <div class="nav-dot"></div>
+    <span class="nav-brand">PAD</span>
+    <span class="nav-sub">Provider Anomaly Detection · PM Case Study</span>
+  </nav>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-eyebrow"><span></span>Healthcare AI · Carelon (Elevance Health)</div>
+    <h1>When your AI product has to<br><em>explain itself to sceptics</em></h1>
+    <p class="hero-sub">A PM case study on shipping fraud detection AI to healthcare investigators — and getting them to actually use it.</p>
+    <div class="hero-tags">
+      <span class="tag">AI/ML Product</span>
+      <span class="tag">FWA Detection</span>
+      <span class="tag">Explainability UX</span>
+      <span class="tag">FCNN · DBSCAN · Decision Tree</span>
+      <span class="tag">1M+ Claims/Month</span>
+      <span class="tag">Investigator Adoption</span>
+    </div>
+  </div>
+
+  <!-- Context stats -->
+  <div class="context-strip">
+    <div class="context-strip-inner">
+      <div>
+        <div class="context-stat-val">1M+</div>
+        <div class="context-stat-lbl">Claims analysed per month</div>
+      </div>
+      <div>
+        <div class="context-stat-val">3</div>
+        <div class="context-stat-lbl">ML detection engines</div>
+      </div>
+      <div>
+        <div class="context-stat-val">~2 hrs</div>
+        <div class="context-stat-lbl">Saved per investigator per day</div>
+      </div>
+      <div>
+        <div class="context-stat-val">2–3×</div>
+        <div class="context-stat-lbl">More cases reviewable per week</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UI Mocks -->
+  <section>
+    <div class="section-label">Interactive UI Mocks</div>
+    <div class="mock-grid">
+
+      <!-- Investigator Lead Queue -->
+      <a class="mock-card" href="ui-mocks/pad-lead-queue.html">
+        <div class="mock-preview">
+          <div class="browser-chrome">
+            <div class="browser-bar">
+              <div class="browser-dot browser-dot-r"></div>
+              <div class="browser-dot browser-dot-y"></div>
+              <div class="browser-dot browser-dot-g"></div>
+              <div class="browser-url"></div>
+            </div>
+            <div class="browser-body">
+              <div class="preview-topnav">
+                <div class="preview-nav-dot"></div>
+                <div class="preview-nav-text">PAD · Lead Queue</div>
+              </div>
+              <div class="preview-row preview-row-high">
+                <span class="preview-badge badge-high">HIGH</span>
+                <span class="preview-name">Dr. J. Smith, TX</span>
+                <span class="preview-score">0.87</span>
+              </div>
+              <div class="preview-row preview-row-high">
+                <span class="preview-badge badge-high">HIGH</span>
+                <span class="preview-name">Sunrise Clinic, FL</span>
+                <span class="preview-score">0.81</span>
+              </div>
+              <div class="preview-row preview-row-med">
+                <span class="preview-badge badge-med">MED</span>
+                <span class="preview-name">ABC Medical, NY</span>
+                <span class="preview-score">0.69</span>
+              </div>
+              <div class="preview-row preview-row-med">
+                <span class="preview-badge badge-med">MED</span>
+                <span class="preview-name">West Coast Labs, CA</span>
+                <span class="preview-score">0.64</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mock-body">
+          <div class="mock-type">Investigator View</div>
+          <div class="mock-title">Prioritised Lead Queue</div>
+          <p class="mock-desc">The SIU investigator's daily starting point. ML-ranked leads with cross-engine confidence, decision tree path visualisation, and one-click case actions.</p>
+          <span class="mock-cta">Open interactive mock <span class="mock-cta-arrow">→</span></span>
+        </div>
+      </a>
+
+      <!-- Model Health Dashboard -->
+      <a class="mock-card" href="ui-mocks/pad-monitoring-dashboard.html">
+        <div class="mock-preview">
+          <div class="browser-chrome">
+            <div class="browser-bar">
+              <div class="browser-dot browser-dot-r"></div>
+              <div class="browser-dot browser-dot-y"></div>
+              <div class="browser-dot browser-dot-g"></div>
+              <div class="browser-url"></div>
+            </div>
+            <div class="browser-body">
+              <div class="preview-stat-row">
+                <div class="preview-stat">
+                  <div class="preview-stat-val" style="color:#81c784">73.4%</div>
+                  <div class="preview-stat-lbl">Recall</div>
+                </div>
+                <div class="preview-stat">
+                  <div class="preview-stat-val" style="color:#64b5f6">47.2%</div>
+                  <div class="preview-stat-lbl">Precision@100</div>
+                </div>
+                <div class="preview-stat">
+                  <div class="preview-stat-val" style="color:#ffb74d">18%</div>
+                  <div class="preview-stat-lbl">Override Rate</div>
+                </div>
+              </div>
+              <div class="preview-chart-bar">
+                <div class="preview-bar" style="height:50%"></div>
+                <div class="preview-bar" style="height:55%"></div>
+                <div class="preview-bar" style="height:45%"></div>
+                <div class="preview-bar preview-bar-hi" style="height:70%"></div>
+                <div class="preview-bar preview-bar-hi" style="height:75%"></div>
+                <div class="preview-bar preview-bar-hi" style="height:65%"></div>
+                <div class="preview-bar preview-bar-hi" style="height:80%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mock-body">
+          <div class="mock-type">PM / Data Science View</div>
+          <div class="mock-title">Model Health Dashboard</div>
+          <p class="mock-desc">Post-launch monitoring for the PM and DS team. Recall, precision, override rate by engine — with drill-down into override patterns that drove model improvement.</p>
+          <span class="mock-cta">Open interactive mock <span class="mock-cta-arrow">→</span></span>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- PM Artifacts -->
+  <section>
+    <div class="section-label">PM Artifacts</div>
+    <div class="artifact-grid">
+
+      <a class="artifact-card" href="pm-artifacts/problem-discovery-and-ux-strategy.md">
+        <div class="artifact-icon">🔍</div>
+        <div class="artifact-title">Problem Discovery &amp; UX Strategy</div>
+        <p class="artifact-desc">How working sessions with investigators changed the product direction — from dashboard consolidation to a prioritisation and explainability problem.</p>
+        <div class="artifact-link">Read artifact →</div>
+      </a>
+
+      <a class="artifact-card" href="pm-artifacts/ai-evaluation-and-monitoring.md">
+        <div class="artifact-icon">📊</div>
+        <div class="artifact-title">AI Evaluation &amp; Monitoring</div>
+        <p class="artifact-desc">5-gate CI/CD eval pipeline, 5-model comparison, shadow mode results, and 6-month post-launch monitoring including override rate diagnosis.</p>
+        <div class="artifact-link">Read artifact →</div>
+      </a>
+
+      <a class="artifact-card" href="pm-artifacts/recall-vs-precision-decision.md">
+        <div class="artifact-icon">⚖️</div>
+        <div class="artifact-title">Recall vs. Precision Decision</div>
+        <p class="artifact-desc">The cost-asymmetry framework that drove recall-first model selection — with the specific numbers that made the tradeoff unambiguous.</p>
+        <div class="artifact-link">Read artifact →</div>
+      </a>
+
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- Architecture + Notebook -->
+  <section style="padding-top:40px; padding-bottom:56px;">
+    <div class="section-label">Architecture &amp; Research</div>
+    <div class="artifact-grid">
+
+      <a class="artifact-card" href="architecture/system-architecture.md">
+        <div class="artifact-icon">🏗️</div>
+        <div class="artifact-title">System Architecture</div>
+        <p class="artifact-desc">Three-engine ML pipeline: DBSCAN behavioural clustering, FCNN claim-level scoring, Code2Vec medical code analysis — deployed on GCP GKE.</p>
+        <div class="artifact-link">Read docs →</div>
+      </a>
+
+      <a class="artifact-card" href="notebooks/README.md">
+        <div class="artifact-icon">📓</div>
+        <div class="artifact-title">EDA Notebook</div>
+        <p class="artifact-desc">Exploratory data analysis on public CMS Medicare data illustrating the fraud detection patterns the system was built to catch.</p>
+        <div class="artifact-link">View notebook →</div>
+      </a>
+
+      <a class="artifact-card" href="README.md">
+        <div class="artifact-icon">📄</div>
+        <div class="artifact-title">Case Study Overview</div>
+        <p class="artifact-desc">Full case study: problem framing, key product decisions, outcomes, and how investigator trust became the primary adoption lever.</p>
+        <div class="artifact-link">Read README →</div>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div>
+      <div class="footer-name">Ngan Pham</div>
+      <div class="footer-role">Senior PM · AI/ML Products · Previously Carelon (Elevance Health)</div>
+    </div>
+    <div class="footer-links">
+      <a href="https://linkedin.com/in/nganpham">LinkedIn</a>
+      <a href="https://github.com/ngankp">GitHub</a>
+    </div>
+  </footer>
+  <div class="footer-note">
+    This case study uses public CMS Medicare data for the demo notebook. All Carelon-specific figures, internal programme names, and tool names have been adjusted or generalised for external publication.
+  </div>
+
+</body>
+</html>
