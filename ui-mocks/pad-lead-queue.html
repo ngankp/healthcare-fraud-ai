@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PAD — SIU Lead Queue</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #0d1b2e;
+      --navy-light: #1a2e47;
+      --blue: #1565c0;
+      --blue-light: #e3f0ff;
+      --red: #c62828;
+      --red-bg: #ffebee;
+      --amber: #e65100;
+      --amber-bg: #fff3e0;
+      --green: #2e7d32;
+      --green-bg: #e8f5e9;
+      --indigo: #3949ab;
+      --teal: #00695c;
+      --pink: #ad1457;
+      --gray-50: #f8f9fa;
+      --gray-100: #f1f3f5;
+      --gray-200: #e9ecef;
+      --gray-400: #868e96;
+      --gray-600: #495057;
+      --gray-900: #212529;
+      --border: #dee2e6;
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--gray-50);
+      color: var(--gray-900);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* Top nav */
+    .topnav {
+      background: var(--navy);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 52px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .topnav-brand { display: flex; align-items: center; gap: 10px; }
+
+    .topnav-brand .logo {
+      background: var(--blue);
+      color: white;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.05em;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .topnav-brand .product-name { font-size: 15px; font-weight: 500; color: #cdd8e8; }
+
+    .topnav-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      color: #8fa3be;
+      font-size: 13px;
+    }
+
+    .topnav-right .user-name { color: #cdd8e8; }
+
+    @keyframes pulse {
+      0%,100% { opacity:1; transform:scale(1); }
+      50% { opacity:0.55; transform:scale(1.4); }
+    }
+
+    .ai-status { display:flex; align-items:center; gap:6px; }
+    .ai-dot { width:7px; height:7px; border-radius:50%; background:#4caf50; flex-shrink:0; animation:pulse 2.2s ease-in-out infinite; }
+    .ai-status-text { font-size:12px; color:#8fa3be; }
+
+    /* Notification banner */
+    .notification-banner {
+      background: var(--navy-light);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding: 8px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 13px;
+      color: #a8c0d6;
+    }
+
+    .notification-banner .pill {
+      background: var(--red);
+      color: white;
+      font-weight: 600;
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    .notification-banner .value { color: #e8f0d8; font-weight: 500; }
+
+    .notif-dismiss {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: #8fa3be;
+      cursor: pointer;
+      font-size: 18px;
+      padding: 0 2px;
+      line-height: 1;
+      opacity: 0.7;
+    }
+    .notif-dismiss:hover { opacity: 1; }
+
+    /* Page container */
+    .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .page-title { font-size: 20px; font-weight: 600; color: var(--gray-900); }
+    .page-subtitle { font-size: 13px; color: var(--gray-400); margin-top: 2px; }
+
+    /* Stats row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--gray-400);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+    }
+
+    .stat-value { font-size: 22px; font-weight: 700; color: var(--gray-900); }
+    .stat-value.high { color: var(--red); }
+    .stat-value.money { color: var(--green); }
+    .stat-sub { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+
+    /* Filter tabs */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px 8px 0 0;
+      padding: 10px 12px;
+      border-bottom: none;
+    }
+
+    .filter-tab {
+      padding: 5px 14px;
+      border-radius: 5px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-600);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .filter-tab:hover { background: var(--gray-100); }
+    .filter-tab.active { background: var(--blue-light); color: var(--blue); }
+
+    .filter-tab .count {
+      display: inline-block;
+      background: var(--gray-200);
+      color: var(--gray-600);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 8px;
+      margin-left: 4px;
+    }
+
+    .filter-tab.active .count { background: var(--blue); color: white; }
+    .filter-tab.high-tab.active { background: var(--red-bg); color: var(--red); }
+    .filter-tab.high-tab.active .count { background: var(--red); color: white; }
+
+    /* Table */
+    .lead-table {
+      width: 100%;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 0 0 8px 8px;
+      border-collapse: collapse;
+      overflow: hidden;
+    }
+
+    .lead-table th {
+      background: var(--gray-100);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--gray-400);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    .lead-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--gray-100);
+      vertical-align: middle;
+    }
+
+    .lead-table tr:last-child td { border-bottom: none; }
+
+    .lead-row { cursor: default; }
+    .lead-row:hover { background: var(--gray-50); }
+    .lead-row.expanded-row { background: var(--blue-light); }
+
+    .lead-table tr.expanded-row td:first-child { box-shadow: inset 4px 0 0 var(--red); }
+    .lead-table tr.row-high td:first-child { box-shadow: inset 4px 0 0 var(--red); }
+    .lead-table tr.row-med td:first-child { box-shadow: inset 4px 0 0 var(--amber); }
+
+    /* Row states */
+    .row-deferred td { opacity: 0.5; }
+    .row-deferred .badge { background: var(--gray-100) !important; color: var(--gray-400) !important; }
+    .row-closed td { opacity: 0.35; }
+    .row-closed .provider-name { text-decoration: line-through; color: var(--gray-400); }
+
+    /* Priority badge */
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+
+    .badge-high { background: var(--red-bg); color: var(--red); }
+    .badge-med  { background: var(--amber-bg); color: var(--amber); }
+    .badge-low  { background: var(--gray-100); color: var(--gray-600); }
+
+    .new-badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      background: var(--blue-light);
+      color: var(--blue);
+      padding: 1px 5px;
+      border-radius: 3px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    /* Provider cell */
+    .provider-name { font-weight: 500; }
+    .provider-npi  { font-size: 12px; color: var(--gray-400); margin-top: 1px; }
+    .in-queue-note { font-size: 11px; color: var(--amber); margin-top: 2px; }
+
+    /* Key signal column */
+    .key-signal { font-size: 12px; color: var(--gray-600); line-height: 1.45; max-width: 200px; }
+    .ks-ai {
+      display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 0.04em;
+      padding: 1px 5px; border-radius: 3px;
+      background: #e8eaf6; color: var(--indigo);
+      margin-bottom: 3px;
+    }
+
+    /* Engine chips */
+    .engine-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+    .chip {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 3px;
+      letter-spacing: 0.02em;
+    }
+    .chip-behavior  { background: #e8eaf6; color: var(--indigo); }
+    .chip-structured{ background: #e0f2f1; color: var(--teal); }
+    .chip-medicode  { background: #fce4ec; color: var(--pink); }
+
+    /* Engine confidence dots */
+    .conf-dots { display: flex; gap: 4px; align-items: center; margin-top: 5px; }
+    .conf-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .cd-e1 { background: var(--indigo); }
+    .cd-e2 { background: var(--teal); }
+    .cd-e3 { background: var(--pink); }
+    .cd-off { background: var(--gray-200); }
+    .conf-dot-label { font-size: 9px; color: var(--gray-400); margin-left: 2px; }
+
+    /* AI risk score */
+    .score-cell { display: flex; flex-direction: column; gap: 4px; min-width: 64px; }
+    .score-num  { font-weight: 700; font-size: 14px; }
+    .score-bar-track { background: var(--gray-200); border-radius: 2px; height: 4px; width: 56px; }
+    .score-bar-fill  { height: 4px; border-radius: 2px; }
+    .score-cell-sm { display: flex; flex-direction: column; gap: 3px; }
+    .score-num-sm { font-size: 13px; font-weight: 600; color: var(--gray-900); }
+    .score-bar-sm { background: var(--gray-200); border-radius: 2px; height: 3px; width: 48px; }
+    .score-bar-sm-fill { height: 3px; border-radius: 2px; }
+    .score-bar-red   { background: var(--red); }
+    .score-bar-blue  { background: var(--blue); }
+    .score-bar-amber { background: var(--amber); }
+
+    .value { font-weight: 600; color: var(--gray-900); }
+
+    .expand-btn {
+      color: var(--blue);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+    .expand-btn:hover { background: var(--blue-light); }
+
+    /* Expanded detail panel */
+    .detail-panel-row td { padding: 0; background: white; }
+    .detail-panel-row { display: none; }
+
+    .detail-panel {
+      border-top: 2px solid var(--blue);
+      padding: 20px 24px;
+      background: white;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 24px;
+    }
+
+    .detail-grid-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .detail-section h4 {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gray-400);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    /* Engine flags */
+    .flag-item { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+    .flag-tag {
+      font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 3px;
+      white-space: nowrap; margin-top: 1px; flex-shrink: 0;
+    }
+    .flag-behavioral { background: #e8eaf6; color: var(--indigo); }
+    .flag-structured  { background: #e0f2f1; color: var(--teal); }
+    .flag-medicode    { background: #fce4ec; color: var(--pink); }
+    .flag-text { font-size: 12px; color: var(--gray-600); line-height: 1.4; }
+
+    /* Confidence tag */
+    .conf-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--green-bg); color: var(--green);
+      font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px;
+    }
+
+    /* Peer comparison bar */
+    .peer-compare {
+      margin-top: 10px; background: var(--gray-50); border: 1px solid var(--gray-200);
+      border-radius: 6px; padding: 10px 12px;
+    }
+    .peer-compare-label {
+      font-size: 11px; color: var(--gray-400); text-transform: uppercase;
+      letter-spacing: 0.04em; margin-bottom: 8px;
+    }
+    .peer-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+    .peer-bar-name {
+      font-size: 11px; color: var(--gray-600); width: 88px; flex-shrink: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .peer-bar-track { flex: 1; background: var(--gray-200); border-radius: 3px; height: 8px; }
+    .peer-bar-fill { height: 8px; border-radius: 3px; }
+    .peer-bar-blue { background: var(--blue); }
+    .peer-bar-red  { background: var(--red); }
+    .peer-bar-amber{ background: var(--amber); }
+    .peer-bar-val { font-size: 11px; font-weight: 700; width: 32px; text-align: right; flex-shrink: 0; }
+
+    /* Decision tree */
+    .dt-steps { display: flex; flex-direction: column; gap: 6px; }
+    .dt-step-box {
+      background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 5px;
+      padding: 5px 10px; font-size: 12px; color: var(--gray-600);
+    }
+    .dt-feature { color: var(--gray-900); font-weight: 500; }
+    .dt-threshold { color: var(--blue); font-weight: 700; }
+    .dt-connector { padding-left: 16px; color: var(--gray-400); font-size: 13px; line-height: 1; }
+    .dt-result-box {
+      background: var(--red-bg); border: 1px solid #ffcdd2; border-radius: 5px;
+      padding: 6px 10px; display: flex; align-items: center; justify-content: space-between; margin-top: 4px;
+    }
+    .dt-result-label { font-size: 12px; font-weight: 700; color: var(--red); }
+    .dt-result-score { font-size: 18px; font-weight: 800; color: var(--red); }
+    .dt-driver-note {
+      margin-top: 8px; font-size: 11px; color: var(--gray-400);
+      line-height: 1.5; font-style: italic;
+    }
+
+    /* Geographic SVG */
+    .geo-box { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 6px; overflow: hidden; }
+    .geo-svg-wrap { background: #d8eaf8; padding: 4px; }
+    .geo-meta { padding: 8px 10px; font-size: 12px; color: var(--gray-600); line-height: 1.5; }
+    .geo-meta strong { color: var(--gray-900); }
+
+    /* Trend chart box */
+    .trend-chart-box {
+      background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 6px; padding: 10px 12px;
+    }
+    .trend-chart-title {
+      font-size: 11px; font-weight: 600; color: var(--gray-400);
+      text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px;
+    }
+    .trend-stat { margin-top: 8px; font-size: 12px; color: var(--gray-600); }
+    .trend-stat strong { color: var(--red); }
+
+    /* CPT code table */
+    .code-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 4px; }
+    .code-table th {
+      font-size: 10px; font-weight: 600; color: var(--gray-400); text-transform: uppercase;
+      letter-spacing: 0.04em; padding: 4px 6px; text-align: left; border-bottom: 1px solid var(--gray-200);
+    }
+    .code-table td { padding: 6px 6px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
+    .code-table tr:last-child td { border-bottom: none; }
+    .code-mono { font-family: 'SF Mono', 'Menlo', monospace; font-size: 11px; color: var(--gray-900); }
+    .risk-high  { color: var(--red);   font-size: 10px; font-weight: 700; }
+    .risk-med   { color: var(--amber); font-size: 10px; font-weight: 700; }
+
+    .code-note {
+      margin-top: 8px; padding: 6px 8px; background: #fce4ec; border-radius: 4px;
+      font-size: 11px; color: var(--pink); line-height: 1.4;
+    }
+
+    /* Code distribution bars */
+    .code-dist { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+    .code-dist-row { display: flex; align-items: center; gap: 6px; }
+    .code-dist-label { font-size: 10px; font-family: 'SF Mono', monospace; color: var(--gray-600); width: 46px; flex-shrink: 0; }
+    .code-dist-wrap { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+    .code-dist-track { background: var(--gray-200); border-radius: 2px; height: 5px; }
+    .code-dist-fill-a { height: 5px; border-radius: 2px; background: var(--pink); }
+    .code-dist-fill-b { height: 5px; border-radius: 2px; background: var(--blue); opacity: 0.5; }
+    .code-dist-pct { font-size: 10px; color: var(--gray-400); width: 28px; text-align: right; flex-shrink: 0; }
+    .code-dist-legend { display: flex; gap: 12px; margin-top: 8px; font-size: 11px; color: var(--gray-400); align-items: center; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 3px; vertical-align: middle; }
+
+    /* Volume trend annotation */
+    .low-conf-note {
+      margin-top: 10px; padding: 8px 10px; background: #fffde7;
+      border: 1px solid #fff176; border-radius: 5px;
+      font-size: 11px; color: #f57f17; line-height: 1.5;
+    }
+
+    /* Action buttons */
+    .detail-actions {
+      margin-top: 16px; padding-top: 14px;
+      border-top: 1px solid var(--gray-200);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .btn {
+      padding: 7px 16px; border-radius: 5px; font-size: 13px;
+      font-weight: 500; cursor: pointer; border: none; transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary   { background: var(--blue); color: white; }
+    .btn-secondary { background: white; color: var(--gray-900); border: 1px solid var(--border); }
+    .btn-ghost     { background: transparent; color: var(--red); border: 1px solid #ffcdd2; }
+
+    /* Gauge summary */
+    .gauge-summary {
+      margin-left: auto; display: flex; align-items: center; gap: 12px;
+      background: var(--red-bg); border: 1px solid #ffcdd2;
+      border-radius: 8px; padding: 8px 14px;
+    }
+
+    /* More leads row */
+    .more-row td {
+      text-align: center; color: var(--gray-400); font-size: 13px;
+      padding: 14px; background: var(--gray-50);
+    }
+
+    /* Toast container */
+    .toast-container {
+      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+      display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+    }
+    .toast {
+      background: var(--gray-900); color: white; font-size: 13px;
+      padding: 10px 16px; border-radius: 6px; max-width: 340px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+      opacity: 0; transform: translateY(10px);
+      transition: opacity 0.22s ease, transform 0.22s ease;
+      pointer-events: auto;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.toast-success { border-left: 3px solid var(--green); }
+    .toast.toast-warn    { border-left: 3px solid var(--amber); }
+    .toast.toast-info    { border-left: 3px solid var(--blue); }
+    .toast-title { font-weight: 600; margin-bottom: 2px; }
+    .toast-body  { font-size: 12px; color: #adb5bd; }
+    .case-type-strip {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 12px; margin-bottom: 16px;
+      background: var(--gray-50); border-radius: 6px;
+      border: 1px solid var(--gray-200); font-size: 12px; color: var(--gray-600);
+    }
+    .case-type-chip {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+      padding: 3px 8px; border-radius: 4px; flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Top Navigation -->
+<nav class="topnav">
+  <div class="topnav-brand">
+    <span class="logo">PAD</span>
+    <span class="product-name">Provider Anomaly Detection</span>
+  </div>
+  <div class="topnav-right">
+    <div class="ai-status">
+      <div class="ai-dot"></div>
+      <span class="ai-status-text">AI refreshed 8:02 AM</span>
+    </div>
+    <span>|</span>
+    <span>SIU Workspace</span>
+    <span>|</span>
+    <span class="user-name">R. Torres · SIU Investigator</span>
+  </div>
+</nav>
+
+<!-- Notification Banner -->
+<div class="notification-banner" id="notif-banner">
+  <span>Monday, 8:04 AM</span>
+  <span>·</span>
+  <span class="pill">3 HIGH</span>
+  <span><span class="value">$149,500</span> combined estimated recovery in high-priority queue</span>
+  <span>·</span>
+  <span>2 leads flagged by all 3 engines</span>
+  <button class="notif-dismiss" onclick="document.getElementById('notif-banner').style.display='none'" title="Dismiss">×</button>
+</div>
+
+<!-- Page Content -->
+<div class="container">
+
+  <div class="page-header">
+    <div>
+      <div class="page-title">My Lead Queue</div>
+      <div class="page-subtitle">Week of Oct 20 · 51 leads assigned · Last refreshed 8:02 AM</div>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">High Priority</div>
+      <div class="stat-value high">3</div>
+      <div class="stat-sub">Est. $149,500 recovery</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Medium Priority</div>
+      <div class="stat-value">8</div>
+      <div class="stat-sub">Est. $203,200 recovery</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Multi-Engine Leads</div>
+      <div class="stat-value">2</div>
+      <div class="stat-sub">Flagged by all 3 engines</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Your Week: Reviewed</div>
+      <div class="stat-value money">12</div>
+      <div class="stat-sub">3 converted to active cases</div>
+    </div>
+  </div>
+
+  <!-- Filter Bar + Table -->
+  <div class="filter-bar">
+    <button class="filter-tab active" onclick="filterRows('all', this)">All Leads <span class="count">51</span></button>
+    <button class="filter-tab high-tab" onclick="filterRows('high', this)">HIGH <span class="count">3</span></button>
+    <button class="filter-tab" onclick="filterRows('medium', this)">MEDIUM <span class="count">8</span></button>
+    <button class="filter-tab" onclick="filterRows('low', this)">LOW <span class="count">40</span></button>
+    <button class="filter-tab" onclick="filterRows('multi', this)">Multi-Engine <span class="count">2</span></button>
+  </div>
+
+  <table class="lead-table">
+    <thead>
+      <tr>
+        <th>Priority</th>
+        <th>Provider</th>
+        <th>Key Signal</th>
+        <th>Engines</th>
+        <th>AI Risk Score</th>
+        <th>Est. Value</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <!-- ROW 1: Dr. J. Smith — HIGH, 3 engines, starts expanded -->
+      <tr class="lead-row expanded-row row-high" id="lead-1"
+          data-priority="high" data-multi-engine="true">
+        <td><span class="badge badge-high">HIGH</span></td>
+        <td>
+          <div class="provider-name">Dr. J. Smith</div>
+          <div class="provider-npi">NPI 1234567890 · Dallas, TX · Cardiology</div>
+          <div class="in-queue-note">14 days in queue</div>
+        </td>
+        <td>
+          <div class="key-signal">
+            <span class="ks-ai">AI SIGNAL</span><br>
+            Billing 8.3× peer median · Codes 93306 + 93308 billed together at unusual rates
+          </div>
+        </td>
+        <td>
+          <div class="engine-chips">
+            <span class="chip chip-behavior">BEHAVIORAL</span>
+            <span class="chip chip-structured">STRUCTURED</span>
+            <span class="chip chip-medicode">MEDICODE</span>
+          </div>
+          <div class="conf-dots" title="Engine confidence: E1 · E2 · E3">
+            <div class="conf-dot cd-e1" title="E1 Behavioral"></div>
+            <div class="conf-dot cd-e2" title="E2 Structured"></div>
+            <div class="conf-dot cd-e3" title="E3 MediCode"></div>
+            <span class="conf-dot-label">3/3</span>
+          </div>
+        </td>
+        <td>
+          <div class="score-cell">
+            <span class="score-num" style="color:var(--red)">0.87</span>
+            <div class="score-bar-track"><div class="score-bar-fill score-bar-red" style="width:87%"></div></div>
+          </div>
+        </td>
+        <td><span class="value">$82,000</span></td>
+        <td><button class="expand-btn" onclick="toggleRow(1)">▼ Close</button></td>
+      </tr>
+
+      <!-- Detail Panel 1 -->
+      <tr class="detail-panel-row" id="detail-1" style="display:table-row">
+        <td colspan="7">
+          <div class="detail-panel">
+            <div class="case-type-strip">
+              <span class="case-type-chip" style="background:#e8eaf6;color:var(--indigo)">MULTI-SCHEME MATCH</span>
+              <span>All 3 detection engines flagged this provider independently · Highest-confidence lead type · <strong style="color:var(--green)">Investigator override rate &lt; 15%</strong></span>
+            </div>
+            <div class="detail-grid">
+
+              <!-- Engine Flags + Peer Comparison -->
+              <div class="detail-section">
+                <h4>Flags Across Engines</h4>
+                <div class="flag-item">
+                  <span class="flag-tag flag-behavioral">E1</span>
+                  <span class="flag-text">Billing volume 8.3× peer median for TX cardiologists. Elevated across 11 consecutive months.</span>
+                </div>
+                <div class="flag-item">
+                  <span class="flag-tag flag-structured">E2</span>
+                  <span class="flag-text">AI risk score: 0.87 — top 3% of current queue. High-confidence FWA signal.</span>
+                </div>
+                <div class="flag-item">
+                  <span class="flag-tag flag-medicode">E3</span>
+                  <span class="flag-text">Codes 93306 + 93308 appear together far more often than among comparable cardiologists. Possible unbundling.</span>
+                </div>
+                <div style="margin-top:8px">
+                  <span class="conf-tag">✓ All 3 engines</span>
+                  <span style="font-size:11px; color:#666; margin-left:6px">Highest-confidence lead type</span>
+                </div>
+                <div class="peer-compare">
+                  <div class="peer-compare-label">Billing Volume vs. TX Cardiology Peers</div>
+                  <div class="peer-bar-row">
+                    <span class="peer-bar-name">Peer median</span>
+                    <div class="peer-bar-track"><div class="peer-bar-fill peer-bar-blue" style="width:12%"></div></div>
+                    <span class="peer-bar-val" style="color:var(--blue)">1.0×</span>
+                  </div>
+                  <div class="peer-bar-row">
+                    <span class="peer-bar-name">Dr. J. Smith</span>
+                    <div class="peer-bar-track"><div class="peer-bar-fill peer-bar-red" style="width:100%"></div></div>
+                    <span class="peer-bar-val" style="color:var(--red)">8.3×</span>
+                  </div>
+                  <div style="font-size:10px; color:var(--gray-400); margin-top:4px">Sustained 11 months · Not explained by patient volume</div>
+                </div>
+              </div>
+
+              <!-- Decision Tree Path -->
+              <div class="detail-section">
+                <h4>Why This Score — Decision Path</h4>
+                <div class="dt-steps">
+                  <div class="dt-step-box"><span class="dt-feature">Avg. charge per visit</span> &nbsp;<span class="dt-threshold">above $2,400</span></div>
+                  <div class="dt-connector">↓ yes</div>
+                  <div class="dt-step-box"><span class="dt-feature">Services billed per patient</span> &nbsp;<span class="dt-threshold">more than 12</span></div>
+                  <div class="dt-connector">↓ yes</div>
+                  <div class="dt-step-box"><span class="dt-feature">Charges vs. regional peers</span> &nbsp;<span class="dt-threshold">3.4× above benchmark</span></div>
+                  <div class="dt-connector">↓ yes</div>
+                  <div class="dt-result-box">
+                    <span class="dt-result-label">SCORE: HIGH</span>
+                    <span class="dt-result-score">0.87</span>
+                  </div>
+                </div>
+                <div class="dt-driver-note">
+                  Primary driver: billing charges vs. regional peers. Provider bills 3.4× above the adjusted benchmark for private-practice cardiology in Dallas metro.
+                </div>
+              </div>
+
+              <!-- Geographic Context -->
+              <div class="detail-section">
+                <h4>Geographic Context — Dallas Metro</h4>
+                <div class="geo-box">
+                  <div class="geo-svg-wrap">
+                    <svg width="100%" viewBox="0 0 220 130" xmlns="http://www.w3.org/2000/svg">
+                      <rect width="220" height="130" fill="#d4e8f5"/>
+                      <line x1="0" y1="43" x2="220" y2="43" stroke="#b8d4e8" stroke-width="0.5"/>
+                      <line x1="0" y1="86" x2="220" y2="86" stroke="#b8d4e8" stroke-width="0.5"/>
+                      <line x1="73" y1="0" x2="73" y2="130" stroke="#b8d4e8" stroke-width="0.5"/>
+                      <line x1="146" y1="0" x2="146" y2="130" stroke="#b8d4e8" stroke-width="0.5"/>
+                      <line x1="0" y1="65" x2="220" y2="65" stroke="#c0d8ec" stroke-width="1.5" stroke-dasharray="6,3"/>
+                      <line x1="110" y1="0" x2="110" y2="130" stroke="#c0d8ec" stroke-width="1.5" stroke-dasharray="6,3"/>
+                      <circle cx="78" cy="62" r="5" fill="#1565c0" opacity="0.7"/>
+                      <circle cx="92" cy="55" r="5" fill="#1565c0" opacity="0.7"/>
+                      <circle cx="85" cy="72" r="5" fill="#1565c0" opacity="0.7"/>
+                      <circle cx="100" cy="65" r="5" fill="#1565c0" opacity="0.7"/>
+                      <circle cx="95" cy="78" r="5" fill="#1565c0" opacity="0.7"/>
+                      <circle cx="108" cy="58" r="5" fill="#1565c0" opacity="0.7"/>
+                      <circle cx="72" cy="75" r="5" fill="#1565c0" opacity="0.7"/>
+                      <circle cx="114" cy="72" r="5" fill="#1565c0" opacity="0.7"/>
+                      <circle cx="88" cy="48" r="5" fill="#1565c0" opacity="0.7"/>
+                      <circle cx="104" cy="82" r="5" fill="#1565c0" opacity="0.7"/>
+                      <circle cx="120" cy="62" r="5" fill="#1565c0" opacity="0.7"/>
+                      <text x="96" y="95" text-anchor="middle" font-size="9" fill="#1565c0" font-family="system-ui,sans-serif" font-weight="600">Peer cluster (n=47)</text>
+                      <circle cx="172" cy="25" r="8" fill="#c62828" opacity="0.9"/>
+                      <line x1="172" y1="33" x2="172" y2="45" stroke="#c62828" stroke-width="1" stroke-dasharray="3,2"/>
+                      <rect x="140" y="45" width="64" height="16" rx="3" fill="white" opacity="0.9"/>
+                      <text x="172" y="56" text-anchor="middle" font-size="9" fill="#c62828" font-family="system-ui,sans-serif" font-weight="700">Dr. J. Smith</text>
+                      <circle cx="14" cy="112" r="4" fill="#1565c0" opacity="0.7"/>
+                      <text x="22" y="116" font-size="9" fill="#444" font-family="system-ui,sans-serif">TX cardiology peers</text>
+                      <circle cx="115" cy="112" r="4" fill="#c62828" opacity="0.9"/>
+                      <text x="123" y="116" font-size="9" fill="#c62828" font-family="system-ui,sans-serif" font-weight="600">Outlier</text>
+                    </svg>
+                  </div>
+                  <div class="geo-meta">
+                    <strong>Outlier on volume, not location.</strong> Within peer area — billing 8.3× cluster median. Peer cluster: 2.1 mi radius.
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Action buttons + FCNN gauge -->
+            <div class="detail-actions">
+              <button class="btn btn-primary" onclick="openCase(1, 'Dr. J. Smith')">Open Case</button>
+              <button class="btn btn-secondary" onclick="deferCase(1, 'Dr. J. Smith')">Defer to Later</button>
+              <button class="btn btn-ghost" onclick="closeCase(1, 'Dr. J. Smith')">Not FWA — Close</button>
+              <div class="gauge-summary">
+                <svg width="70" height="44" viewBox="0 0 140 90" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M 15 80 A 55 55 0 0 1 125 80" stroke="#f5c6cb" stroke-width="10" fill="none" stroke-linecap="round"/>
+                  <path d="M 15 80 A 55 55 0 0 1 125 80" stroke="#c62828" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="150.3 200" stroke-dashoffset="0"/>
+                  <text x="70" y="72" text-anchor="middle" font-size="22" font-weight="800" fill="#c62828" font-family="system-ui,sans-serif">0.87</text>
+                  <text x="70" y="88" text-anchor="middle" font-size="10" fill="#868e96" font-family="system-ui,sans-serif">AI Risk Score</text>
+                </svg>
+                <div style="font-size:12px; color:var(--red);">
+                  <div style="font-weight:700; font-size:13px">HIGH FWA RISK</div>
+                  <div style="color:var(--gray-400); margin-top:2px">Top 3% of queue</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>
+
+      <!-- ROW 2: Sunrise Clinic — HIGH, E1+E2 -->
+      <tr class="lead-row row-high" id="lead-2"
+          data-priority="high" data-multi-engine="false">
+        <td><span class="badge badge-high">HIGH</span></td>
+        <td>
+          <div class="provider-name">
+            Sunrise Clinic
+            <span class="new-badge">NEW</span>
+          </div>
+          <div class="provider-npi">NPI 9876543210 · Miami, FL · Internal Medicine</div>
+          <div class="in-queue-note">Today</div>
+        </td>
+        <td>
+          <div class="key-signal">
+            <span class="ks-ai">AI SIGNAL</span><br>
+            Billing 6.1× peer median · Revenue +220% over 14 weeks
+          </div>
+        </td>
+        <td>
+          <div class="engine-chips">
+            <span class="chip chip-behavior">BEHAVIORAL</span>
+            <span class="chip chip-structured">STRUCTURED</span>
+          </div>
+          <div class="conf-dots" title="Engine confidence: E1 · E2 · E3">
+            <div class="conf-dot cd-e1" title="E1 Behavioral"></div>
+            <div class="conf-dot cd-e2" title="E2 Structured"></div>
+            <div class="conf-dot cd-off" title="E3 not flagged"></div>
+            <span class="conf-dot-label">2/3</span>
+          </div>
+        </td>
+        <td>
+          <div class="score-cell-sm">
+            <span class="score-num-sm" style="color:var(--red)">0.81</span>
+            <div class="score-bar-sm"><div class="score-bar-sm-fill score-bar-red" style="width:81%"></div></div>
+          </div>
+        </td>
+        <td><span class="value">$67,000</span></td>
+        <td><button class="expand-btn" onclick="toggleRow(2)">▶ Open</button></td>
+      </tr>
+
+      <!-- Detail Panel 2 -->
+      <tr class="detail-panel-row" id="detail-2">
+        <td colspan="7">
+          <div class="detail-panel">
+            <div class="case-type-strip">
+              <span class="case-type-chip" style="background:#e0f2f1;color:var(--teal)">RAPID VOLUME ESCALATION</span>
+              <span>Behavioral volume + AI scoring both flagged · Code mix within normal range · Pattern: sudden-onset billing spike</span>
+            </div>
+            <div class="detail-grid">
+
+              <!-- Engine Flags + Peer -->
+              <div class="detail-section">
+                <h4>Flags Across Engines</h4>
+                <div class="flag-item">
+                  <span class="flag-tag flag-behavioral">E1</span>
+                  <span class="flag-text">Billing volume 6.1× peer median for FL internal medicine. Revenue grew +220% in 14 weeks.</span>
+                </div>
+                <div class="flag-item">
+                  <span class="flag-tag flag-structured">E2</span>
+                  <span class="flag-text">AI risk score: 0.81 — top 6% of current queue. Consistent high-score across 3 consecutive model runs.</span>
+                </div>
+                <div style="margin-top:8px; margin-bottom:10px">
+                  <span style="font-size:11px; color:var(--gray-400)">E3 not flagged — code mix within baseline range.</span>
+                </div>
+                <div class="peer-compare">
+                  <div class="peer-compare-label">Billing Volume vs. FL Internal Medicine</div>
+                  <div class="peer-bar-row">
+                    <span class="peer-bar-name">Peer median</span>
+                    <div class="peer-bar-track"><div class="peer-bar-fill peer-bar-blue" style="width:16%"></div></div>
+                    <span class="peer-bar-val" style="color:var(--blue)">1.0×</span>
+                  </div>
+                  <div class="peer-bar-row">
+                    <span class="peer-bar-name">Sunrise Clinic</span>
+                    <div class="peer-bar-track"><div class="peer-bar-fill peer-bar-red" style="width:100%"></div></div>
+                    <span class="peer-bar-val" style="color:var(--red)">6.1×</span>
+                  </div>
+                  <div style="font-size:10px; color:var(--gray-400); margin-top:4px">Rapid onset — 14-week ramp vs. typical baseline drift</div>
+                </div>
+              </div>
+
+              <!-- Decision Tree Path -->
+              <div class="detail-section">
+                <h4>Why This Score — Decision Path</h4>
+                <div class="dt-steps">
+                  <div class="dt-step-box"><span class="dt-feature">Avg. charge per visit</span> &nbsp;<span class="dt-threshold">above $1,900</span></div>
+                  <div class="dt-connector">↓ yes</div>
+                  <div class="dt-step-box"><span class="dt-feature">Services billed per patient</span> &nbsp;<span class="dt-threshold">more than 10</span></div>
+                  <div class="dt-connector">↓ yes</div>
+                  <div class="dt-step-box"><span class="dt-feature">Charges vs. regional peers</span> &nbsp;<span class="dt-threshold">2.8× above benchmark</span></div>
+                  <div class="dt-connector">↓ yes</div>
+                  <div class="dt-result-box">
+                    <span class="dt-result-label">SCORE: HIGH</span>
+                    <span class="dt-result-score">0.81</span>
+                  </div>
+                </div>
+                <div class="dt-driver-note">
+                  Primary driver: services billed per patient. Volume spike inconsistent with typical FL internal medicine practice patterns.
+                </div>
+              </div>
+
+              <!-- Revenue Trend Chart -->
+              <div class="detail-section">
+                <h4>Revenue Trend — 14-Week Window</h4>
+                <div class="trend-chart-box">
+                  <div class="trend-chart-title">Weekly Billing vs. Peer Baseline</div>
+                  <svg width="100%" viewBox="0 0 200 90" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Axis -->
+                    <line x1="20" y1="10" x2="20" y2="75" stroke="#dee2e6" stroke-width="1"/>
+                    <line x1="20" y1="75" x2="195" y2="75" stroke="#dee2e6" stroke-width="1"/>
+                    <!-- Peer baseline (flat) -->
+                    <line x1="20" y1="62" x2="195" y2="62" stroke="#1565c0" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.5"/>
+                    <text x="196" y="65" font-size="7" fill="#1565c0" font-family="system-ui" opacity="0.8">peer</text>
+                    <!-- Revenue line: flat then sharply rising -->
+                    <polyline
+                      points="20,62 35,61 50,60 65,59 80,58 95,52 110,44 125,34 140,24 155,18 170,13 185,10"
+                      fill="none" stroke="#c62828" stroke-width="2"
+                      stroke-linejoin="round" stroke-linecap="round"/>
+                    <!-- Area fill under the curve -->
+                    <polygon
+                      points="20,62 35,61 50,60 65,59 80,58 95,52 110,44 125,34 140,24 155,18 170,13 185,10 185,75 20,75"
+                      fill="#c62828" opacity="0.06"/>
+                    <!-- Data dot at current -->
+                    <circle cx="185" cy="10" r="4" fill="#c62828"/>
+                    <!-- Labels -->
+                    <text x="22" y="83" font-size="7" fill="#868e96" font-family="system-ui">Wk 1</text>
+                    <text x="107" y="83" font-size="7" fill="#868e96" font-family="system-ui" text-anchor="middle">Wk 7</text>
+                    <text x="183" y="83" font-size="7" fill="#868e96" font-family="system-ui" text-anchor="end">Wk 14</text>
+                  </svg>
+                  <div class="trend-stat"><strong>+220% revenue</strong> over 14 weeks. Sudden-onset pattern — not seasonal or patient-volume driven.</div>
+                </div>
+              </div>
+
+            </div>
+
+            <div class="detail-actions">
+              <button class="btn btn-primary" onclick="openCase(2, 'Sunrise Clinic')">Open Case</button>
+              <button class="btn btn-secondary" onclick="deferCase(2, 'Sunrise Clinic')">Defer to Later</button>
+              <button class="btn btn-ghost" onclick="closeCase(2, 'Sunrise Clinic')">Not FWA — Close</button>
+              <div class="gauge-summary">
+                <svg width="70" height="44" viewBox="0 0 140 90" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M 15 80 A 55 55 0 0 1 125 80" stroke="#f5c6cb" stroke-width="10" fill="none" stroke-linecap="round"/>
+                  <path d="M 15 80 A 55 55 0 0 1 125 80" stroke="#c62828" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="140.1 200" stroke-dashoffset="0"/>
+                  <text x="70" y="72" text-anchor="middle" font-size="22" font-weight="800" fill="#c62828" font-family="system-ui,sans-serif">0.81</text>
+                  <text x="70" y="88" text-anchor="middle" font-size="10" fill="#868e96" font-family="system-ui,sans-serif">AI Risk Score</text>
+                </svg>
+                <div style="font-size:12px; color:var(--red);">
+                  <div style="font-weight:700; font-size:13px">HIGH FWA RISK</div>
+                  <div style="color:var(--gray-400); margin-top:2px">Top 6% of queue</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>
+
+      <!-- ROW 3: ABC Medical — MEDIUM, E2+E3 -->
+      <tr class="lead-row row-med" id="lead-3"
+          data-priority="medium" data-multi-engine="false">
+        <td><span class="badge badge-med">MEDIUM</span></td>
+        <td>
+          <div class="provider-name">ABC Medical Group</div>
+          <div class="provider-npi">NPI 4455667788 · New York, NY · Family Practice</div>
+          <div class="in-queue-note">3 days in queue</div>
+        </td>
+        <td>
+          <div class="key-signal">
+            <span class="ks-ai">AI SIGNAL</span><br>
+            4 billing code pairs unusually frequent · Upcoding pattern
+          </div>
+        </td>
+        <td>
+          <div class="engine-chips">
+            <span class="chip chip-structured">STRUCTURED</span>
+            <span class="chip chip-medicode">MEDICODE</span>
+          </div>
+          <div class="conf-dots" title="Engine confidence: E1 · E2 · E3">
+            <div class="conf-dot cd-off" title="E1 not flagged"></div>
+            <div class="conf-dot cd-e2" title="E2 Structured"></div>
+            <div class="conf-dot cd-e3" title="E3 MediCode"></div>
+            <span class="conf-dot-label">2/3</span>
+          </div>
+        </td>
+        <td>
+          <div class="score-cell-sm">
+            <span class="score-num-sm">0.69</span>
+            <div class="score-bar-sm"><div class="score-bar-sm-fill score-bar-amber" style="width:69%"></div></div>
+          </div>
+        </td>
+        <td><span class="value">$31,000</span></td>
+        <td><button class="expand-btn" onclick="toggleRow(3)">▶ Open</button></td>
+      </tr>
+
+      <!-- Detail Panel 3 -->
+      <tr class="detail-panel-row" id="detail-3">
+        <td colspan="7">
+          <div class="detail-panel">
+            <div class="case-type-strip">
+              <span class="case-type-chip" style="background:#fce4ec;color:var(--pink)">CODE MANIPULATION PATTERN</span>
+              <span>Billing volume is normal — risk is in how services are coded, not how many · Code fraud is harder to detect manually and often missed by rule-based tools</span>
+            </div>
+            <div class="detail-grid">
+
+              <!-- Engine Flags -->
+              <div class="detail-section">
+                <h4>Flags Across Engines</h4>
+                <div class="flag-item">
+                  <span class="flag-tag flag-structured">E2</span>
+                  <span class="flag-text">AI risk score: 0.69 — above threshold. Moderate confidence signal; code patterns are primary driver.</span>
+                </div>
+                <div class="flag-item">
+                  <span class="flag-tag flag-medicode">E3</span>
+                  <span class="flag-text">4 billing code pairs appear unusually frequent compared to family practice peers. Possible systematic upcoding.</span>
+                </div>
+                <div style="margin-top:8px; margin-bottom:10px">
+                  <span style="font-size:11px; color:var(--gray-400)">E1 not flagged — billing volume within peer range. Risk is code-specific, not volume-based.</span>
+                </div>
+                <div style="padding:8px 10px; background:var(--amber-bg); border-radius:5px; border-left:3px solid var(--amber)">
+                  <div style="font-size:11px; font-weight:600; color:var(--amber)">Code Pattern Risk</div>
+                  <div style="font-size:11px; color:var(--gray-600); margin-top:2px">4 of 4 flagged pairs in same specialty = systematic pattern, not isolated billing error.</div>
+                </div>
+              </div>
+
+              <!-- Decision Tree Path -->
+              <div class="detail-section">
+                <h4>Why This Score — Decision Path</h4>
+                <div class="dt-steps">
+                  <div class="dt-step-box"><span class="dt-feature">Highest-complexity code (99215)</span> &nbsp;<span class="dt-threshold">71% of visits</span></div>
+                  <div class="dt-connector">↓ yes</div>
+                  <div class="dt-step-box"><span class="dt-feature">Code pairs above 90th percentile</span> &nbsp;<span class="dt-threshold">4 or more</span></div>
+                  <div class="dt-connector">↓ yes</div>
+                  <div class="dt-step-box"><span class="dt-feature">Code mix vs. family practice peers</span> &nbsp;<span class="dt-threshold">outlier on 3 of top 5 codes</span></div>
+                  <div class="dt-connector">↓ yes</div>
+                  <div class="dt-result-box">
+                    <span class="dt-result-label">SCORE: MEDIUM</span>
+                    <span class="dt-result-score" style="color:var(--amber)">0.69</span>
+                  </div>
+                </div>
+                <div class="dt-driver-note">
+                  Primary driver: code complexity concentration. Provider bills highest-complexity codes at 3× the family practice baseline rate — consistent with upcoding rather than case mix variation.
+                </div>
+              </div>
+
+              <!-- CPT Co-Occurrence Table -->
+              <div class="detail-section">
+                <h4>Supporting Evidence — Code Pairs</h4>
+                <table class="code-table">
+                  <thead>
+                    <tr>
+                      <th>Code Pair</th>
+                      <th>Type</th>
+                      <th>Pct</th>
+                      <th>Risk</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><span class="code-mono">99214 + 99215</span></td>
+                      <td style="font-size:11px; color:var(--gray-600)">Upcoding</td>
+                      <td style="font-size:11px; color:var(--red)">97th</td>
+                      <td><span class="risk-high">HIGH</span></td>
+                    </tr>
+                    <tr>
+                      <td><span class="code-mono">99213 + 99215</span></td>
+                      <td style="font-size:11px; color:var(--gray-600)">Upcoding</td>
+                      <td style="font-size:11px; color:var(--red)">96th</td>
+                      <td><span class="risk-high">HIGH</span></td>
+                    </tr>
+                    <tr>
+                      <td><span class="code-mono">99215 + 99024</span></td>
+                      <td style="font-size:11px; color:var(--gray-600)">Unbundling</td>
+                      <td style="font-size:11px; color:var(--amber)">95th</td>
+                      <td><span class="risk-med">MED</span></td>
+                    </tr>
+                    <tr>
+                      <td><span class="code-mono">99215 + G2065</span></td>
+                      <td style="font-size:11px; color:var(--gray-600)">Telehealth mix</td>
+                      <td style="font-size:11px; color:var(--amber)">94th</td>
+                      <td><span class="risk-med">MED</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div class="code-note">4 of 4 pairs in family practice context — systematic rather than isolated. Pattern confirmed across billing code analysis.</div>
+              </div>
+
+              <!-- Code Distribution Comparison -->
+              <div class="detail-section">
+                <h4>Code Mix vs. Family Practice Baseline</h4>
+                <div style="font-size:11px; color:var(--gray-400); margin-bottom:8px">Top 5 CPT codes — provider (pink) vs. peer baseline (blue)</div>
+                <div class="code-dist">
+                  <div class="code-dist-row">
+                    <span class="code-dist-label">99215</span>
+                    <div class="code-dist-wrap">
+                      <div class="code-dist-track"><div class="code-dist-fill-a" style="width:71%"></div></div>
+                      <div class="code-dist-track" style="margin-top:1px"><div class="code-dist-fill-b" style="width:22%"></div></div>
+                    </div>
+                    <span class="code-dist-pct" style="color:var(--pink)">71%</span>
+                  </div>
+                  <div class="code-dist-row">
+                    <span class="code-dist-label">99214</span>
+                    <div class="code-dist-wrap">
+                      <div class="code-dist-track"><div class="code-dist-fill-a" style="width:18%"></div></div>
+                      <div class="code-dist-track" style="margin-top:1px"><div class="code-dist-fill-b" style="width:41%"></div></div>
+                    </div>
+                    <span class="code-dist-pct" style="color:var(--pink)">18%</span>
+                  </div>
+                  <div class="code-dist-row">
+                    <span class="code-dist-label">99213</span>
+                    <div class="code-dist-wrap">
+                      <div class="code-dist-track"><div class="code-dist-fill-a" style="width:6%"></div></div>
+                      <div class="code-dist-track" style="margin-top:1px"><div class="code-dist-fill-b" style="width:28%"></div></div>
+                    </div>
+                    <span class="code-dist-pct" style="color:var(--pink)">6%</span>
+                  </div>
+                  <div class="code-dist-row">
+                    <span class="code-dist-label">99212</span>
+                    <div class="code-dist-wrap">
+                      <div class="code-dist-track"><div class="code-dist-fill-a" style="width:3%"></div></div>
+                      <div class="code-dist-track" style="margin-top:1px"><div class="code-dist-fill-b" style="width:7%"></div></div>
+                    </div>
+                    <span class="code-dist-pct" style="color:var(--pink)">3%</span>
+                  </div>
+                </div>
+                <div class="code-dist-legend">
+                  <span><span class="legend-dot" style="background:var(--pink)"></span>This provider</span>
+                  <span><span class="legend-dot" style="background:var(--blue); opacity:0.5"></span>Family practice baseline</span>
+                </div>
+                <div style="margin-top:8px; font-size:11px; color:var(--gray-600); background:var(--gray-50); padding:6px 8px; border-radius:4px">
+                  99215 (highest complexity) at 71% vs. 22% baseline. Outlier concentration consistent with upcoding pattern.
+                </div>
+              </div>
+
+            </div>
+
+            <div class="detail-actions">
+              <button class="btn btn-primary" onclick="openCase(3, 'ABC Medical Group')">Open Case</button>
+              <button class="btn btn-secondary" onclick="deferCase(3, 'ABC Medical Group')">Defer to Later</button>
+              <button class="btn btn-ghost" onclick="closeCase(3, 'ABC Medical Group')">Not FWA — Close</button>
+              <div class="gauge-summary" style="background:var(--amber-bg); border-color:#ffcc80;">
+                <svg width="70" height="44" viewBox="0 0 140 90" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M 15 80 A 55 55 0 0 1 125 80" stroke="#ffcc80" stroke-width="10" fill="none" stroke-linecap="round"/>
+                  <path d="M 15 80 A 55 55 0 0 1 125 80" stroke="#e65100" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="119.2 200" stroke-dashoffset="0"/>
+                  <text x="70" y="72" text-anchor="middle" font-size="22" font-weight="800" fill="#e65100" font-family="system-ui,sans-serif">0.69</text>
+                  <text x="70" y="88" text-anchor="middle" font-size="10" fill="#868e96" font-family="system-ui,sans-serif">AI Risk Score</text>
+                </svg>
+                <div style="font-size:12px; color:var(--amber);">
+                  <div style="font-weight:700; font-size:13px">MEDIUM FWA RISK</div>
+                  <div style="color:var(--gray-400); margin-top:2px">Code-driven signal</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>
+
+      <!-- ROW 4: West Coast Labs — MEDIUM, E1 only -->
+      <tr class="lead-row row-med" id="lead-4"
+          data-priority="medium" data-multi-engine="false">
+        <td><span class="badge badge-med">MEDIUM</span></td>
+        <td>
+          <div class="provider-name">West Coast Laboratories</div>
+          <div class="provider-npi">NPI 1122334455 · Los Angeles, CA · Lab / Pathology</div>
+          <div class="in-queue-note">7 days in queue</div>
+        </td>
+        <td>
+          <div class="key-signal">
+            <span class="ks-ai">AI SIGNAL</span><br>
+            Volume 4.2× lab/path median · 5-month sustained trend
+          </div>
+        </td>
+        <td>
+          <div class="engine-chips">
+            <span class="chip chip-behavior">BEHAVIORAL</span>
+          </div>
+          <div class="conf-dots" title="Engine confidence: E1 · E2 · E3">
+            <div class="conf-dot cd-e1" title="E1 Behavioral"></div>
+            <div class="conf-dot cd-off" title="E2 not flagged"></div>
+            <div class="conf-dot cd-off" title="E3 not flagged"></div>
+            <span class="conf-dot-label">1/3</span>
+          </div>
+        </td>
+        <td>
+          <div class="score-cell-sm">
+            <span class="score-num-sm">0.64</span>
+            <div class="score-bar-sm"><div class="score-bar-sm-fill score-bar-amber" style="width:64%"></div></div>
+          </div>
+        </td>
+        <td><span class="value">$28,500</span></td>
+        <td><button class="expand-btn" onclick="toggleRow(4)">▶ Open</button></td>
+      </tr>
+
+      <!-- Detail Panel 4 -->
+      <tr class="detail-panel-row" id="detail-4">
+        <td colspan="7">
+          <div class="detail-panel">
+            <div class="case-type-strip">
+              <span class="case-type-chip" style="background:#fff3e0;color:var(--amber)">VOLUME ANOMALY — SINGLE ENGINE</span>
+              <span>E1 behavioral analysis only · Lower confidence than multi-engine leads · Review claim samples before escalating</span>
+            </div>
+            <div class="detail-grid">
+
+              <!-- Engine Flags + Peer -->
+              <div class="detail-section">
+                <h4>Flags Across Engines</h4>
+                <div class="flag-item">
+                  <span class="flag-tag flag-behavioral">E1</span>
+                  <span class="flag-text">Billing volume 4.2× lab/path median for CA. Sustained and gradually increasing over 5 months.</span>
+                </div>
+                <div style="margin-top:8px; margin-bottom:10px">
+                  <span style="font-size:11px; color:var(--gray-400)">E2 and E3 not flagged. Single-engine signal — lower combined confidence than multi-engine leads.</span>
+                </div>
+                <div class="peer-compare">
+                  <div class="peer-compare-label">Volume vs. CA Lab/Path Peers</div>
+                  <div class="peer-bar-row">
+                    <span class="peer-bar-name">Peer median</span>
+                    <div class="peer-bar-track"><div class="peer-bar-fill peer-bar-blue" style="width:24%"></div></div>
+                    <span class="peer-bar-val" style="color:var(--blue)">1.0×</span>
+                  </div>
+                  <div class="peer-bar-row">
+                    <span class="peer-bar-name">West Coast Labs</span>
+                    <div class="peer-bar-track"><div class="peer-bar-fill peer-bar-amber" style="width:100%"></div></div>
+                    <span class="peer-bar-val" style="color:var(--amber)">4.2×</span>
+                  </div>
+                  <div style="font-size:10px; color:var(--gray-400); margin-top:4px">Gradual escalation — not sudden onset. Consistent over 5 months.</div>
+                </div>
+                <div class="low-conf-note">
+                  <strong>⚠ Single-engine lead (E1 only).</strong> Opens as MEDIUM. Consider claim-level review before escalating to formal investigation. Override rate for single-engine lab leads: 28%.
+                </div>
+              </div>
+
+              <!-- Decision Tree Path -->
+              <div class="detail-section">
+                <h4>Why This Score — Decision Path</h4>
+                <div class="dt-steps">
+                  <div class="dt-step-box"><span class="dt-feature">Billing volume vs. lab/path peers</span> &nbsp;<span class="dt-threshold">above 4×</span></div>
+                  <div class="dt-connector">↓ yes</div>
+                  <div class="dt-step-box"><span class="dt-feature">Duration of elevated volume</span> &nbsp;<span class="dt-threshold">5 or more months</span></div>
+                  <div class="dt-connector">↓ yes</div>
+                  <div class="dt-step-box"><span class="dt-feature">Month-on-month escalation trend</span> &nbsp;<span class="dt-threshold">consistent increase</span></div>
+                  <div class="dt-connector">↓ yes</div>
+                  <div class="dt-result-box">
+                    <span class="dt-result-label">SCORE: MEDIUM</span>
+                    <span class="dt-result-score" style="color:var(--amber)">0.64</span>
+                  </div>
+                </div>
+                <div class="dt-driver-note">
+                  Primary driver: sustained volume escalation over 5 months. Pattern is gradual, not sudden — consistent with deliberate billing increase rather than a caseload spike. Single-engine signal; recommend claim-level sampling before full investigation.
+                </div>
+              </div>
+
+              <!-- Volume Trend Chart -->
+              <div class="detail-section">
+                <h4>Supporting Evidence — Volume Trend</h4>
+                <div class="trend-chart-box">
+                  <div class="trend-chart-title">Monthly billing volume vs. Lab/Path median</div>
+                  <svg width="100%" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Axis -->
+                    <line x1="24" y1="10" x2="24" y2="82" stroke="#dee2e6" stroke-width="1"/>
+                    <line x1="24" y1="82" x2="195" y2="82" stroke="#dee2e6" stroke-width="1"/>
+                    <!-- Peer baseline -->
+                    <line x1="24" y1="72" x2="195" y2="72" stroke="#1565c0" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.5"/>
+                    <text x="196" y="75" font-size="7" fill="#1565c0" font-family="system-ui" opacity="0.8">1×</text>
+                    <!-- Volume bars (subtle) -->
+                    <rect x="36"  y="67" width="20" height="15" fill="#e65100" opacity="0.15" rx="2"/>
+                    <rect x="72"  y="60" width="20" height="22" fill="#e65100" opacity="0.2" rx="2"/>
+                    <rect x="108" y="48" width="20" height="34" fill="#e65100" opacity="0.25" rx="2"/>
+                    <rect x="144" y="38" width="20" height="44" fill="#e65100" opacity="0.3" rx="2"/>
+                    <rect x="162" y="30" width="20" height="52" fill="#e65100" opacity="0.4" rx="2"/>
+                    <!-- Volume line -->
+                    <polyline
+                      points="46,67 82,60 118,48 154,38 172,30"
+                      fill="none" stroke="#e65100" stroke-width="2.5"
+                      stroke-linejoin="round" stroke-linecap="round"/>
+                    <!-- Data points -->
+                    <circle cx="46"  cy="67" r="3" fill="white" stroke="#e65100" stroke-width="1.5"/>
+                    <circle cx="82"  cy="60" r="3" fill="white" stroke="#e65100" stroke-width="1.5"/>
+                    <circle cx="118" cy="48" r="3" fill="white" stroke="#e65100" stroke-width="1.5"/>
+                    <circle cx="154" cy="38" r="3" fill="white" stroke="#e65100" stroke-width="1.5"/>
+                    <circle cx="172" cy="30" r="4" fill="#e65100"/>
+                    <!-- Value labels -->
+                    <text x="46"  y="62" font-size="7" fill="#e65100" font-family="system-ui" text-anchor="middle">1.2×</text>
+                    <text x="82"  y="55" font-size="7" fill="#e65100" font-family="system-ui" text-anchor="middle">1.8×</text>
+                    <text x="118" y="43" font-size="7" fill="#e65100" font-family="system-ui" text-anchor="middle">2.9×</text>
+                    <text x="154" y="33" font-size="7" fill="#e65100" font-family="system-ui" text-anchor="middle">3.6×</text>
+                    <text x="172" y="25" font-size="7" fill="#e65100" font-family="system-ui" text-anchor="middle" font-weight="700">4.2×</text>
+                    <!-- Month labels -->
+                    <text x="46"  y="92" font-size="7" fill="#868e96" font-family="system-ui" text-anchor="middle">Mo1</text>
+                    <text x="82"  y="92" font-size="7" fill="#868e96" font-family="system-ui" text-anchor="middle">Mo2</text>
+                    <text x="118" y="92" font-size="7" fill="#868e96" font-family="system-ui" text-anchor="middle">Mo3</text>
+                    <text x="154" y="92" font-size="7" fill="#868e96" font-family="system-ui" text-anchor="middle">Mo4</text>
+                    <text x="172" y="92" font-size="7" fill="#212529" font-family="system-ui" text-anchor="middle" font-weight="700">Mo5</text>
+                  </svg>
+                  <div class="trend-stat">Consistent month-over-month escalation. No seasonal adjustment identified. Recommend claim-level sampling before full investigation.</div>
+                </div>
+              </div>
+
+            </div>
+
+            <div class="detail-actions">
+              <button class="btn btn-primary" onclick="openCase(4, 'West Coast Laboratories')">Open Case</button>
+              <button class="btn btn-secondary" onclick="deferCase(4, 'West Coast Laboratories')">Defer to Later</button>
+              <button class="btn btn-ghost" onclick="closeCase(4, 'West Coast Laboratories')">Not FWA — Close</button>
+              <div class="gauge-summary" style="background:var(--amber-bg); border-color:#ffcc80;">
+                <svg width="70" height="44" viewBox="0 0 140 90" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M 15 80 A 55 55 0 0 1 125 80" stroke="#ffcc80" stroke-width="10" fill="none" stroke-linecap="round"/>
+                  <path d="M 15 80 A 55 55 0 0 1 125 80" stroke="#e65100" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="110.6 200" stroke-dashoffset="0"/>
+                  <text x="70" y="72" text-anchor="middle" font-size="22" font-weight="800" fill="#e65100" font-family="system-ui,sans-serif">0.64</text>
+                  <text x="70" y="88" text-anchor="middle" font-size="10" fill="#868e96" font-family="system-ui,sans-serif">AI Risk Score</text>
+                </svg>
+                <div style="font-size:12px; color:var(--amber);">
+                  <div style="font-weight:700; font-size:13px">MEDIUM FWA RISK</div>
+                  <div style="color:var(--gray-400); margin-top:2px">Single-engine signal</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>
+
+      <!-- More Leads Row -->
+      <tr class="more-row">
+        <td colspan="7">+ 47 more leads (8 MEDIUM · 40 LOW) · <a class="expand-btn" style="font-size:13px">Load all</a></td>
+      </tr>
+
+    </tbody>
+  </table>
+
+</div>
+
+<script>
+  // Initialize: row 1 starts expanded
+  document.getElementById('detail-1').style.display = 'table-row';
+
+  function toggleRow(id) {
+    const row    = document.getElementById('lead-' + id);
+    const panel  = document.getElementById('detail-' + id);
+    const btn    = row.querySelector('.expand-btn');
+    const isOpen = row.classList.contains('expanded-row');
+
+    // Close all
+    document.querySelectorAll('.lead-row').forEach(r => r.classList.remove('expanded-row'));
+    document.querySelectorAll('.detail-panel-row').forEach(p => { p.style.display = 'none'; });
+    document.querySelectorAll('.lead-row .expand-btn').forEach(b => {
+      if (b.textContent.includes('Close')) b.textContent = '▶ Open';
+    });
+
+    if (!isOpen) {
+      row.classList.add('expanded-row');
+      panel.style.display = 'table-row';
+      btn.textContent = '▼ Close';
+    }
+  }
+
+  function filterRows(type, el) {
+    // Update tab active state
+    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+
+    const rows = document.querySelectorAll('.lead-row');
+    rows.forEach(row => {
+      const priority    = row.dataset.priority;
+      const multiEngine = row.dataset.multiEngine === 'true';
+      const rowId       = row.id.replace('lead-', '');
+      const panel       = document.getElementById('detail-' + rowId);
+
+      let show = false;
+      if (type === 'all')    show = true;
+      if (type === 'high'   && priority === 'high')   show = true;
+      if (type === 'medium' && priority === 'medium') show = true;
+      if (type === 'low'    && priority === 'low')    show = true;
+      if (type === 'multi'  && multiEngine)           show = true;
+
+      row.style.display  = show ? '' : 'none';
+      if (!show) {
+        panel.style.display = 'none';
+        row.classList.remove('expanded-row');
+        row.querySelector('.expand-btn').textContent = '▶ Open';
+      }
+    });
+  }
+
+  function showToast(title, body, type) {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-' + type;
+    toast.innerHTML = '<div class="toast-title">' + title + '</div>'
+                    + '<div class="toast-body">'  + body  + '</div>';
+    container.appendChild(toast);
+    requestAnimationFrame(() => requestAnimationFrame(() => toast.classList.add('show')));
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 300);
+    }, 3500);
+  }
+
+  function openCase(id, name) {
+    const row = document.getElementById('lead-' + id);
+    // Close the panel
+    document.getElementById('detail-' + id).style.display = 'none';
+    row.classList.remove('expanded-row');
+    row.querySelector('.expand-btn').textContent = '▶ Open';
+    showToast('Case opened — ' + name, 'Routed to Active Cases. Decision tree path saved as case rationale.', 'success');
+  }
+
+  function deferCase(id, name) {
+    const row = document.getElementById('lead-' + id);
+    row.classList.add('row-deferred');
+    document.getElementById('detail-' + id).style.display = 'none';
+    row.classList.remove('expanded-row');
+    row.querySelector('.expand-btn').textContent = '▶ Open';
+    showToast('Lead deferred — ' + name, 'Moved to deferred queue. Will resurface in 7 days.', 'info');
+  }
+
+  function closeCase(id, name) {
+    const row = document.getElementById('lead-' + id);
+    row.classList.add('row-closed');
+    document.getElementById('detail-' + id).style.display = 'none';
+    row.classList.remove('expanded-row');
+    row.querySelector('.expand-btn').textContent = '▶ Open';
+    showToast('Lead closed — ' + name, 'Marked Not FWA. Override recorded for model quality monitoring.', 'warn');
+  }
+</script>
+
+</body>
+</html>
