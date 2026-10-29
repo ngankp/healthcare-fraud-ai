@@ -375,6 +375,44 @@
     }
     .context-stat-lbl { font-size: 12px; color: var(--muted); }
 
+    /* ── Hero actions ── */
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 28px;
+    }
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      background: var(--blue);
+      border: none;
+      border-radius: 7px;
+      padding: 12px 22px;
+      text-decoration: none;
+      transition: background 0.12s;
+    }
+    .btn-primary:hover { background: var(--blue-lt); }
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--blue-lt);
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 12px 22px;
+      text-decoration: none;
+      transition: border-color 0.12s;
+    }
+    .btn-ghost:hover { border-color: var(--blue-lt); }
+
     /* ── Footer ── */
     footer {
       max-width: 900px;
@@ -427,6 +465,10 @@
       <span class="tag">1M+ Claims/Month</span>
       <span class="tag">Investigator Adoption</span>
     </div>
+    <div class="hero-actions">
+      <a class="btn-primary" href="reader.html?file=TIMBER-Portfolio-Article.md">Read the case study article →</a>
+      <a class="btn-ghost" href="https://github.com/ngankp/healthcare-fraud-ai" target="_blank">View on GitHub ↗</a>
+    </div>
   </div>
 
   <!-- Context stats -->
@@ -445,8 +487,8 @@
         <div class="context-stat-lbl">Saved per investigator per day</div>
       </div>
       <div>
-        <div class="context-stat-val">2–3×</div>
-        <div class="context-stat-lbl">More cases reviewable per week</div>
+        <div class="context-stat-val">$300M+</div>
+        <div class="context-stat-lbl">Annual FWA recovery programme</div>
       </div>
     </div>
   </div>
