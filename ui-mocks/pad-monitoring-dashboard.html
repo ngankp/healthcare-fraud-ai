@@ -1,1089 +1,1126 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PAD — Model Health Dashboard</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="PAD SIU fraud detection model health dashboard: engine status, KPIs, override rates and fairness checks by reporting month.">
+<title>PAD Model Health Dashboard</title>
+<style>
+/* Hallmark · Midnight · PAD Model Health Dashboard · 2026-10-31 · theme: Midnight (by request) */
+/* critique: dense data dashboard, dark high-contrast, semantic risk tokens for Elevated/Ok states */
+/* waive 26b: btn:disabled added; no form controls with aria-disabled in this view */
+:root {
+  color-scheme: dark;
+  --space-3xs: 2px; --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px;
+  --color-paper: oklch(14% 0.048 264); --color-paper-2: oklch(18.5% 0.052 264); --color-paper-3: oklch(23% 0.055 264);
+  --color-ink: oklch(95% 0.016 250); --color-ink-2: oklch(88% 0.05 245); --color-muted: oklch(73% 0.04 256);
+  --color-rule: oklch(29% 0.058 264); --color-rule-2: oklch(40% 0.06 262);
+  --color-accent: oklch(80% 0.11 230); --color-accent-2: oklch(58% 0.1 236); --color-accent-ink: oklch(16% 0.05 264); --color-focus: oklch(84% 0.12 228);
+  --font-display: "Mona Sans", ui-sans-serif, system-ui, sans-serif; --font-body: var(--font-display);
+  --font-mono: "SF Mono", ui-monospace, "Cascadia Mono", monospace;
+  --radius-card: 0; --radius-pill: 0; --rule-hair: 1px;
+  --shadow-card: 0 24px 48px -24px oklch(6% 0.04 264 / 0.7);
+  --tracking-display: -0.015em; --display-weight: 300; --display-stretch: 125%;
+  --color-risk-high: oklch(65% 0.18 25); --color-risk-high-bg: oklch(20% 0.04 25);
+  --color-risk-med: oklch(72% 0.14 50); --color-risk-med-bg: oklch(20% 0.03 50);
+  --color-risk-ok: oklch(76% 0.13 150); --color-risk-ok-bg: oklch(19% 0.03 150);
+  --color-accent-subtle: oklch(80% 0.11 230 / 0.12); --color-ok-subtle: oklch(76% 0.13 150 / 0.12);
+  --color-overlay: oklch(10% 0.03 264 / 0.7);
+  --color-indigo: oklch(68% 0.14 270); --color-indigo-bg: oklch(19% 0.04 270);
+  --color-teal: oklch(72% 0.12 185); --color-teal-bg: oklch(18% 0.03 185);
+  --text-xs: 11px; --text-sm: 12px; --text-md: 14px; --text-lg: 16px;
+  --text-xl: 20px; --text-2xl: 28px;
+  --dur-short: 120ms; --dur-mid: 200ms; --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --nav-h: 48px;
+}
 
-    :root {
-      --navy: #0d1b2e;
-      --blue: #1565c0;
-      --blue-light: #e3f0ff;
-      --red: #c62828;
-      --red-bg: #ffebee;
-      --amber: #e65100;
-      --amber-bg: #fff8e1;
-      --green: #2e7d32;
-      --green-bg: #e8f5e9;
-      --indigo: #3949ab;
-      --indigo-bg: #e8eaf6;
-      --gray-50: #f8f9fa;
-      --gray-100: #f1f3f5;
-      --gray-200: #e9ecef;
-      --gray-400: #868e96;
-      --gray-600: #495057;
-      --gray-900: #212529;
-      --border: #dee2e6;
-      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    }
+*, *::before, *::after { box-sizing: border-box; }
+html, body { overflow-x: clip; }
+html { scrollbar-color: var(--color-muted) var(--color-paper); }
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+svg { display: block; }
+[hidden] { display: none !important; }
+button { font: inherit; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) {
+  *:not(.keep-motion), *:not(.keep-motion)::before, *:not(.keep-motion)::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 
-    body {
-      font-family: var(--font);
-      background: var(--gray-50);
-      color: var(--gray-900);
-      font-size: 14px;
-      line-height: 1.5;
-    }
+/* Nav */
+.topnav {
+  position: sticky; top: 0; z-index: 100;
+  height: var(--nav-h);
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+  display: flex; align-items: center;
+  padding-inline: var(--space-lg);
+  gap: var(--space-md);
+}
+.topnav-brand {
+  display: flex; align-items: center; gap: var(--space-xs);
+  font-size: var(--text-sm); font-weight: 600; letter-spacing: 0.04em;
+  color: var(--color-ink);
+}
+.brand-badge {
+  background: var(--color-accent); color: var(--color-accent-ink);
+  font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.05em;
+  padding: 0 var(--space-2xs);
+  height: 18px; display: inline-flex; align-items: center;
+}
+.topnav-title { font-size: var(--text-md); color: var(--color-ink-2); }
+.topnav-sep { color: var(--color-muted); user-select: none; margin-inline: var(--space-2xs); }
+.topnav-right {
+  margin-left: auto;
+  display: flex; align-items: center; gap: var(--space-sm);
+  font-size: var(--text-sm); color: var(--color-muted);
+}
+.live-dot {
+  width: 6px; height: 6px;
+  background: var(--color-risk-ok);
+  border-radius: 50%;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
 
-    /* Top nav */
-    .topnav {
-      background: var(--navy);
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 24px;
-      height: 52px;
-    }
-    .topnav-brand { display: flex; align-items: center; gap: 10px; }
-    .topnav-brand .logo {
-      background: var(--blue); color: white; font-weight: 700; font-size: 13px;
-      letter-spacing: 0.05em; padding: 4px 8px; border-radius: 4px;
-    }
-    .topnav-brand .product-name { font-size: 15px; font-weight: 500; color: #cdd8e8; }
-    .topnav-brand .section { color: #8fa3be; font-size: 14px; }
-    .topnav-right { color: #8fa3be; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+/* Layout */
+.page-wrap {
+  max-width: 1280px;
+  margin-inline: auto;
+  padding: var(--space-lg);
+}
 
-    /* Container */
-    .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+/* Month tabs */
+.month-tabs {
+  display: flex; gap: var(--space-2xs);
+  margin-bottom: var(--space-md);
+}
+.month-tab {
+  background: transparent;
+  color: var(--color-muted);
+  border: var(--rule-hair) solid var(--color-rule);
+  padding: var(--space-2xs) var(--space-sm);
+  font-size: var(--text-sm); font-weight: 500;
+  cursor: pointer;
+  transition: color var(--dur-short) var(--ease-out), background var(--dur-short) var(--ease-out), border-color var(--dur-short) var(--ease-out);
+}
+.month-tab:hover { color: var(--color-ink); border-color: var(--color-rule-2); }
+.month-tab:active { background: var(--color-paper-3); }
+.month-tab.active {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  border-color: var(--color-accent);
+  font-weight: 600;
+}
+.month-tab:disabled, .month-tab[aria-disabled="true"] { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
 
-    /* Page header */
-    .page-header {
-      display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px;
-    }
-    .page-title { font-size: 20px; font-weight: 600; }
-    .page-subtitle { font-size: 13px; color: var(--gray-400); margin-top: 2px; }
-    .month-badge {
-      background: var(--indigo-bg); color: var(--indigo);
-      font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 6px;
-    }
+/* Status bar */
+.status-bar {
+  background: var(--color-risk-med-bg);
+  color: var(--color-risk-med);
+  border: var(--rule-hair) solid var(--color-risk-med);
+  padding: var(--space-xs) var(--space-md);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-md);
+  display: flex; align-items: center; gap: var(--space-xs);
+}
+.status-bar.ok {
+  background: var(--color-risk-ok-bg);
+  color: var(--color-risk-ok);
+  border-color: var(--color-risk-ok);
+}
+.status-bar.info {
+  background: var(--color-indigo-bg);
+  color: var(--color-indigo);
+  border-color: var(--color-indigo);
+}
 
-    /* Month tabs */
-    .month-tabs { display: flex; gap: 4px; }
-    .month-tab {
-      padding: 5px 14px; border-radius: 5px; font-size: 12px; font-weight: 600;
-      cursor: pointer; border: 1px solid var(--border); background: white;
-      color: var(--gray-600); transition: all .15s; font-family: var(--font);
-    }
-    .month-tab.active { background: var(--indigo); color: white; border-color: var(--indigo); }
-    .month-tab:hover:not(.active) { background: var(--gray-100); }
+/* ::selection */
+::selection { background: var(--color-accent); color: var(--color-accent-ink); }
 
-    /* Page header right cluster */
-    .header-right { display: flex; align-items: center; gap: 10px; }
+/* Section header */
+.section-head {
+  font-size: var(--text-sm); font-weight: 600;
+  color: var(--color-muted);
+  margin-bottom: var(--space-sm);
+  padding-bottom: var(--space-xs);
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+}
 
-    /* Status bar */
-    .status-bar {
-      background: var(--amber-bg);
-      border: 1px solid #ffcc80;
-      border-radius: 8px;
-      padding: 10px 16px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 13px;
-      margin-bottom: 20px;
-    }
-    .status-bar .icon { font-size: 16px; flex-shrink: 0; }
-    .status-bar strong { color: var(--amber); }
+/* Engine cards */
+.engine-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+.engine-card {
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+  border: var(--rule-hair) solid var(--color-rule);
+  padding: var(--space-md);
+}
+.engine-card.warn { border-color: var(--color-risk-med); }
+.engine-card-head {
+  display: flex; align-items: center; gap: var(--space-xs);
+  margin-bottom: var(--space-xs);
+}
+.engine-dot {
+  width: 8px; height: 8px;
+  flex-shrink: 0;
+}
+.engine-dot.ok { background: var(--color-risk-ok); }
+.engine-dot.warn { background: var(--color-risk-med); }
+.engine-dot.high { background: var(--color-risk-high); }
+.engine-name {
+  font-size: var(--text-md); font-weight: 600; color: var(--color-ink);
+  flex: 1;
+}
+.engine-badge {
+  font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.03em;
+  padding: 0 var(--space-xs);
+  height: 18px; display: inline-flex; align-items: center;
+}
+.engine-badge.ok { background: var(--color-risk-ok-bg); color: var(--color-risk-ok); }
+.engine-badge.warn { background: var(--color-risk-med-bg); color: var(--color-risk-med); }
+.engine-desc { font-size: var(--text-sm); color: var(--color-muted); margin-bottom: var(--space-sm); }
+.engine-metrics { display: flex; gap: var(--space-md); }
+.engine-metric-label { font-size: var(--text-xs); color: var(--color-muted); margin-bottom: var(--space-3xs); }
+.engine-metric-val { font-size: var(--text-lg); font-weight: 600; color: var(--color-ink); font-variant-numeric: tabular-nums; }
 
-    /* Engine status row */
-    .engine-status-row {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-    .engine-card {
-      background: white;
-      border: 1px solid var(--border);
-      border-left-width: 3px;
-      border-radius: 8px;
-      padding: 12px 16px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .engine-card.engine-warn { border-left-color: var(--amber); }
-    .engine-card.engine-ok   { border-left-color: var(--green); }
-    .engine-dot {
-      width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
-    }
-    .engine-card.engine-warn .engine-dot { background: var(--amber); }
-    .engine-card.engine-ok   .engine-dot { background: var(--green); }
-    .engine-info { flex: 1; }
-    .engine-name { font-size: 13px; font-weight: 600; color: var(--gray-900); }
-    .engine-model { font-size: 11px; color: var(--gray-400); margin-top: 1px; }
-    .engine-badge {
-      font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
-      padding: 2px 8px; border-radius: 10px; white-space: nowrap;
-    }
-    .engine-badge.warn { background: var(--amber-bg); color: var(--amber); }
-    .engine-badge.ok   { background: var(--green-bg); color: var(--green); }
-    .engine-override { font-size: 11px; color: var(--gray-400); margin-top: 3px; }
+/* KPI grid */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+.kpi-card {
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+  border: var(--rule-hair) solid var(--color-rule);
+  padding: var(--space-md);
+}
+.kpi-card.warn { border-color: var(--color-risk-med); }
+.kpi-label { font-size: var(--text-xs); color: var(--color-muted); margin-bottom: var(--space-xs); }
+.kpi-val {
+  font-size: var(--text-2xl); font-weight: 300; color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-display);
+  margin-bottom: var(--space-xs);
+}
+.kpi-val.warn { color: var(--color-risk-med); }
+.kpi-val.ok { color: var(--color-risk-ok); }
+.kpi-delta {
+  font-size: var(--text-xs); color: var(--color-muted);
+  margin-bottom: var(--space-sm);
+}
+.kpi-delta.pos { color: var(--color-risk-ok); }
+.kpi-delta.neg { color: var(--color-risk-high); }
+.kpi-delta.neu { color: var(--color-risk-med); }
 
-    /* KPI grid */
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-    .kpi-card {
-      background: white;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px;
-    }
-    .kpi-label {
-      font-size: 11px; font-weight: 600; color: var(--gray-400);
-      text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;
-    }
-    .kpi-value {
-      font-size: 28px; font-weight: 700; color: var(--gray-900); line-height: 1;
-    }
-    .kpi-delta {
-      display: inline-flex; align-items: center; gap: 3px;
-      font-size: 12px; font-weight: 600; margin-top: 6px;
-    }
-    .kpi-delta.up   { color: var(--green); }
-    .kpi-delta.warn { color: var(--amber); }
-    .kpi-target { font-size: 11px; color: var(--gray-400); margin-top: 3px; }
+/* Sparkline SVG */
+.sparkline { width: 100%; height: 40px; }
+.spark-fill { fill: var(--color-accent-subtle); }
+.spark-line { fill: none; stroke: var(--color-accent); stroke-width: 1.5; }
+.spark-fill-ok { fill: var(--color-ok-subtle); }
+.spark-line-ok { fill: none; stroke: var(--color-risk-ok); stroke-width: 1.5; }
+.spark-ref { stroke: var(--color-muted); stroke-width: 1; stroke-dasharray: 3 3; }
 
-    /* KPI with sparkline layout */
-    .kpi-body { display: flex; align-items: flex-end; justify-content: space-between; }
-    .kpi-body .kpi-numbers { flex: 1; }
+/* Donut SVG */
+.donut-wrap { display: flex; align-items: center; gap: var(--space-sm); }
+.donut-svg { width: 52px; height: 52px; }
+.donut-track { fill: none; stroke: var(--color-rule-2); stroke-width: 6; }
+.donut-fill { fill: none; stroke: var(--color-accent); stroke-width: 6; stroke-linecap: square; }
+.donut-fill.ok { stroke: var(--color-risk-ok); }
+.donut-fill.warn { stroke: var(--color-risk-med); }
+.donut-label { font-size: var(--text-xs); fill: var(--color-muted); text-anchor: middle; }
+.donut-val { font-size: 13px; fill: var(--color-ink); text-anchor: middle; font-weight: 600; }
+.donut-meta { font-size: var(--text-xs); color: var(--color-muted); }
 
-    /* Donut KPI layout */
-    .kpi-donut-body { display: flex; align-items: center; gap: 14px; margin-top: 4px; }
-    .kpi-donut-meta { flex: 1; }
+/* Override rate section */
+.override-section {
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+  border: var(--rule-hair) solid var(--color-rule);
+  padding: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+.override-head { display: flex; align-items: center; gap: var(--space-xs); margin-bottom: var(--space-md); }
+.override-title { font-size: var(--text-md); font-weight: 600; color: var(--color-ink); }
+.override-badge {
+  font-size: var(--text-xs); font-weight: 600;
+  padding: 0 var(--space-xs); height: 18px;
+  display: inline-flex; align-items: center;
+  background: var(--color-risk-med-bg); color: var(--color-risk-med);
+}
+.override-expand-btn {
+  margin-left: auto;
+  background: transparent;
+  color: var(--color-muted);
+  border: var(--rule-hair) solid var(--color-rule);
+  padding: var(--space-3xs) var(--space-sm);
+  font-size: var(--text-xs); cursor: pointer;
+  transition: color var(--dur-short), border-color var(--dur-short);
+}
+.override-expand-btn:hover { color: var(--color-ink); border-color: var(--color-rule-2); }
+.override-expand-btn:active { background: var(--color-paper-3); }
+.override-expand-btn:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+.bar-row { margin-bottom: var(--space-sm); }
+.bar-row:last-child { margin-bottom: 0; }
+.bar-meta { display: flex; justify-content: space-between; margin-bottom: var(--space-2xs); font-size: var(--text-sm); }
+.bar-label { color: var(--color-ink-2); }
+.bar-pct { color: var(--color-ink); font-variant-numeric: tabular-nums; font-weight: 600; }
+.bar-track {
+  height: 6px;
+  background: var(--color-rule);
+}
+.bar-fill {
+  height: 100%;
+  background: var(--color-accent);
+}
+.bar-fill.warn { background: var(--color-risk-med); }
 
-    /* Section headers */
-    .section-header {
-      font-size: 14px; font-weight: 600; color: var(--gray-900);
-      margin-bottom: 12px; margin-top: 24px;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .section-header .section-sub {
-      font-size: 12px; font-weight: 400; color: var(--gray-400);
-    }
+/* Drill-down table */
+.data-table-wrap {
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+  border: var(--rule-hair) solid var(--color-rule);
+  margin-bottom: var(--space-lg);
+  overflow-x: auto;
+}
+.data-table {
+  width: 100%; border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+.data-table th {
+  text-align: left;
+  font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.03em;
+  color: var(--color-muted);
+  padding: var(--space-xs) var(--space-md);
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+  background: var(--color-paper-3);
+  white-space: nowrap;
+}
+.data-table td {
+  padding: var(--space-xs) var(--space-md);
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+  color: var(--color-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: var(--color-paper-3); }
+.td-name { color: var(--color-ink); font-weight: 500; }
+.td-badge {
+  display: inline-flex; align-items: center;
+  font-size: var(--text-xs); font-weight: 600;
+  padding: 0 var(--space-xs); height: 18px;
+}
+.td-badge.ok { background: var(--color-risk-ok-bg); color: var(--color-risk-ok); }
+.td-badge.warn { background: var(--color-risk-med-bg); color: var(--color-risk-med); }
+.td-badge.high { background: var(--color-risk-high-bg); color: var(--color-risk-high); }
 
-    /* Two-column layout */
-    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+/* Chart section */
+.chart-section {
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+  border: var(--rule-hair) solid var(--color-rule);
+  padding: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+.chart-head {
+  display: flex; align-items: center; gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+.chart-title { font-size: var(--text-md); font-weight: 600; color: var(--color-ink); }
+.chart-legend {
+  margin-left: auto;
+  display: flex; align-items: center; gap: var(--space-md);
+  font-size: var(--text-xs); color: var(--color-muted);
+}
+.legend-swatch {
+  display: inline-block; width: 16px; height: 2px;
+  margin-right: var(--space-2xs); vertical-align: middle;
+  background: var(--color-accent);
+}
+.legend-swatch.ok { background: var(--color-risk-ok); }
+.legend-swatch.threshold { background: var(--color-muted); }
 
-    /* Card */
-    .card {
-      background: white; border: 1px solid var(--border); border-radius: 8px; padding: 16px;
-    }
-    .card-title {
-      font-size: 12px; font-weight: 600; color: var(--gray-400);
-      text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;
-      display: flex; align-items: center; justify-content: space-between;
-    }
+/* SVG chart lines */
+.chart-svg { width: 100%; overflow: visible; }
+.chart-axis-line { stroke: var(--color-rule); stroke-width: 1; }
+.chart-grid { stroke: var(--color-rule); stroke-width: 1; stroke-dasharray: 4 4; }
+.chart-p100-line { fill: none; stroke: var(--color-accent); stroke-width: 2; }
+.chart-conv-line { fill: none; stroke: var(--color-risk-ok); stroke-width: 2; }
+.chart-threshold { stroke: var(--color-muted); stroke-width: 1; stroke-dasharray: 6 3; }
+.chart-label { font-size: 11px; fill: var(--color-muted); }
+.chart-label-light { font-size: 11px; fill: var(--color-ink-2); }
 
-    /* Card toggle button */
-    .card-toggle {
-      background: none; border: none; cursor: pointer; font-size: 11px;
-      color: var(--blue); font-weight: 600; padding: 0; letter-spacing: 0;
-      text-transform: none; font-family: var(--font); transition: opacity .15s;
-    }
-    .card-toggle:hover { opacity: 0.7; }
+/* Drift table */
+.drift-section {
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+  border: var(--rule-hair) solid var(--color-rule);
+  margin-bottom: var(--space-lg);
+}
+.drift-section .section-head { padding: var(--space-md) var(--space-md) 0; border-bottom: none; margin-bottom: 0; }
+.drift-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.drift-table th {
+  text-align: left;
+  font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.03em;
+  color: var(--color-muted);
+  padding: var(--space-xs) var(--space-md);
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+  border-top: var(--rule-hair) solid var(--color-rule);
+  background: var(--color-paper-3);
+}
+.drift-table td {
+  padding: var(--space-xs) var(--space-md);
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+  color: var(--color-ink-2);
+}
+.drift-table tr:last-child td { border-bottom: none; }
+.drift-feature { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-ink); }
+.drift-val { font-variant-numeric: tabular-nums; }
+.drift-status { }
 
-    /* Drill-down collapse */
-    .drill-down-body.collapsed { display: none; }
+/* Fairness section */
+.fairness-section {
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+  border: var(--rule-hair) solid var(--color-rule);
+  padding: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+.fairness-row {
+  display: flex; align-items: center; gap: var(--space-md);
+  padding: var(--space-xs) 0;
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+}
+.fairness-row:last-child { border-bottom: none; }
+.fairness-label { font-size: var(--text-sm); color: var(--color-ink-2); flex: 1; }
+.fairness-val { font-size: var(--text-sm); font-weight: 600; color: var(--color-ink); font-variant-numeric: tabular-nums; width: 80px; text-align: right; }
+.fairness-range { font-size: var(--text-xs); color: var(--color-muted); width: 80px; text-align: right; }
+.fairness-status { width: 80px; text-align: right; }
 
-    /* Override rate bars */
-    .override-list { display: flex; flex-direction: column; gap: 10px; }
-    .override-item { display: flex; flex-direction: column; gap: 4px; }
-    .override-item.clickable {
-      cursor: pointer; padding: 8px; border-radius: 6px;
-      transition: background .15s; margin: -8px;
-    }
-    .override-item.clickable:hover { background: var(--gray-50); }
-    .override-item.clickable.active { background: var(--amber-bg); }
-    .override-meta { display: flex; justify-content: space-between; align-items: center; }
-    .override-engine { font-size: 13px; font-weight: 500; }
-    .override-pct { font-size: 13px; font-weight: 700; }
-    .override-pct.warn { color: var(--amber); }
-    .override-pct.ok   { color: var(--green); }
-    .bar-track { background: var(--gray-100); border-radius: 4px; height: 8px; }
-    .bar-fill  { height: 8px; border-radius: 4px; transition: width .4s ease; }
-    .bar-amber { background: var(--amber); }
-    .bar-green { background: var(--green); }
-    .override-status {
-      font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 3px;
-    }
-    .status-warn { background: var(--amber-bg); color: var(--amber); }
-    .status-ok   { background: var(--green-bg); color: var(--green); }
+/* Actions checklist */
+.actions-section {
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+  border: var(--rule-hair) solid var(--color-rule);
+  padding: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+.action-item {
+  display: flex; align-items: flex-start; gap: var(--space-sm);
+  padding: var(--space-xs) 0;
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+}
+.action-item:last-child { border-bottom: none; }
+.action-check {
+  width: 16px; height: 16px; flex-shrink: 0;
+  border: var(--rule-hair) solid var(--color-rule-2);
+  background: transparent; cursor: pointer; margin-top: 1px;
+  display: flex; align-items: center; justify-content: center;
+}
+.action-check.done {
+  background: var(--color-risk-ok-bg);
+  border-color: var(--color-risk-ok);
+}
+.action-check.done::after {
+  content: "✓"; font-size: 10px; color: var(--color-risk-ok);
+}
+.action-text { font-size: var(--text-sm); color: var(--color-ink-2); flex: 1; line-height: 1.4; }
+.action-text.done { color: var(--color-muted); text-decoration: line-through; }
+.action-owner { font-size: var(--text-xs); color: var(--color-muted); white-space: nowrap; }
 
-    /* Drill-down table */
-    .drill-table { width: 100%; border-collapse: collapse; }
-    .drill-table th {
-      font-size: 11px; font-weight: 600; color: var(--gray-400);
-      text-transform: uppercase; letter-spacing: 0.04em;
-      padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--gray-200);
-    }
-    .drill-table td {
-      padding: 8px; font-size: 13px; border-bottom: 1px solid var(--gray-100);
-    }
-    .drill-table tr:last-child td { border-bottom: none; }
-    .drill-bar-wrap { display: flex; align-items: center; gap: 8px; }
-    .drill-bar-track { background: var(--gray-100); border-radius: 3px; height: 6px; flex: 1; }
-    .drill-bar-fill  { height: 6px; border-radius: 3px; }
-    .drill-bar-red   { background: var(--red); }
-    .drill-bar-amber { background: var(--amber); }
-    .drill-bar-gray  { background: var(--gray-400); }
-    .drill-bar-green { background: var(--green); }
-    .action-note {
-      font-size: 11px; color: var(--blue); font-weight: 600;
-      background: var(--blue-light); padding: 1px 6px; border-radius: 3px;
-    }
+/* Action bar */
+.action-bar {
+  background: var(--color-paper-3);
+  color: var(--color-ink);
+  border: var(--rule-hair) solid var(--color-rule);
+  border-top: var(--rule-hair) solid var(--color-rule-2);
+  padding: var(--space-sm) var(--space-md);
+  display: flex; align-items: center; gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+.action-bar-meta { font-size: var(--text-xs); color: var(--color-muted); margin-left: auto; }
 
-    /* Fairness checks */
-    .fairness-grid { display: flex; flex-direction: column; gap: 8px; }
-    .fairness-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 8px 10px; background: var(--gray-50); border-radius: 5px;
-    }
-    .fairness-label { font-size: 13px; }
-    .fairness-value { font-size: 13px; font-weight: 600; color: var(--gray-600); }
-    .check-ok   { color: var(--green); font-weight: 700; font-size: 13px; }
-    .check-warn { color: var(--amber); font-weight: 700; font-size: 13px; }
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-md);
+  font-size: var(--text-sm); font-weight: 500;
+  border: var(--rule-hair) solid transparent;
+  cursor: pointer; line-height: 1;
+  transition: opacity var(--dur-short), background var(--dur-short), color var(--dur-short), border-color var(--dur-short);
+  white-space: nowrap;
+}
+.btn-primary {
+  background: var(--color-accent); color: var(--color-accent-ink);
+  border-color: var(--color-accent);
+}
+.btn-primary:hover { opacity: 0.85; }
+.btn-primary:active { opacity: 0.7; }
+.btn-secondary {
+  background: transparent; color: var(--color-ink);
+  border-color: var(--color-rule-2);
+}
+.btn-secondary:hover { border-color: var(--color-muted); }
+.btn-secondary:active { background: var(--color-paper-3); }
+.btn-warning {
+  background: transparent; color: var(--color-risk-med);
+  border-color: var(--color-risk-med);
+}
+.btn-warning:hover { background: var(--color-risk-med-bg); }
+.btn-warning:active { opacity: 0.8; }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
 
-    /* Action list */
-    .action-list { display: flex; flex-direction: column; gap: 8px; }
-    .action-item {
-      display: flex; align-items: flex-start; gap: 10px;
-      padding: 10px 12px; background: var(--gray-50); border-radius: 6px;
-      border-left: 3px solid var(--blue);
-    }
-    .action-item .checkbox { margin-top: 1px; }
-    .action-item .action-text { font-size: 13px; color: var(--gray-900); }
-    .action-item .action-sub  { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+/* Toast */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.toast-container {
+  position: fixed; bottom: var(--space-lg); right: var(--space-lg);
+  display: flex; flex-direction: column; gap: var(--space-xs);
+  z-index: 200;
+}
+.toast {
+  background: var(--color-paper-3);
+  border: var(--rule-hair) solid var(--color-rule);
+  color: var(--color-ink);
+  padding: var(--space-xs) var(--space-md);
+  font-size: var(--text-xs);
+  min-width: 260px;
+  display: flex; align-items: center; gap: var(--space-xs);
+  animation: toast-in var(--dur-short) var(--ease-out) both;
+}
+.toast.success { border-color: var(--color-risk-ok); }
+.toast.info { border-color: var(--color-accent); }
+.toast.warning { border-color: var(--color-risk-med); }
 
-    /* Feature drift */
-    .drift-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 8px 0; border-bottom: 1px solid var(--gray-100);
-    }
-    .drift-row:last-child { border-bottom: none; }
-    .drift-feature { font-size: 13px; font-family: 'SF Mono', monospace; color: var(--gray-600); }
-    .drift-val { font-size: 12px; color: var(--gray-400); }
-    .drift-status { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 3px; }
-    .drift-stable { background: var(--green-bg); color: var(--green); }
-    .drift-yellow { background: var(--amber-bg); color: var(--amber); }
+/* Modal */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: var(--color-overlay);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 300;
+  padding: var(--space-md);
+}
+.modal-overlay[hidden] { display: none !important; }
+.modal-card {
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+  border: var(--rule-hair) solid var(--color-rule-2);
+  width: 100%; max-width: 480px;
+  padding: var(--space-lg);
+}
+.modal-title { font-size: var(--text-lg); font-weight: 600; color: var(--color-ink); margin-bottom: var(--space-xs); }
+.modal-desc { font-size: var(--text-sm); color: var(--color-muted); margin-bottom: var(--space-lg); }
+.modal-info {
+  background: var(--color-paper-3);
+  border: var(--rule-hair) solid var(--color-rule);
+  padding: var(--space-sm) var(--space-md);
+  margin-bottom: var(--space-md);
+}
+.modal-info-row { display: flex; justify-content: space-between; font-size: var(--text-sm); margin-bottom: var(--space-2xs); }
+.modal-info-row:last-child { margin-bottom: 0; }
+.modal-info-label { color: var(--color-muted); }
+.modal-info-val { color: var(--color-ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+.modal-warn {
+  font-size: var(--text-xs); color: var(--color-risk-med);
+  margin-bottom: var(--space-md);
+}
+.modal-actions { display: flex; gap: var(--space-sm); justify-content: flex-end; }
 
-    /* Bottom action bar */
-    .action-bar {
-      background: white; border: 1px solid var(--border); border-radius: 8px;
-      padding: 12px 16px; display: flex; align-items: center; gap: 10px;
-      margin-top: 24px;
-    }
-    .btn {
-      padding: 7px 16px; border-radius: 5px; font-size: 13px; font-weight: 500;
-      cursor: pointer; border: none; font-family: var(--font); transition: opacity .15s;
-    }
-    .btn:hover { opacity: 0.85; }
-    .btn-secondary { background: white; color: var(--gray-900); border: 1px solid var(--border); }
-    .btn-primary   { background: var(--blue); color: white; }
-    .btn-ghost     { background: transparent; color: var(--red); border: 1px solid #ffcdd2; }
-    .btn-group     { display: flex; gap: 8px; margin-left: auto; }
-
-    /* Chart legend */
-    .chart-legend {
-      display: flex; align-items: center; gap: 16px;
-      margin-top: 10px; font-size: 11px; color: var(--gray-600);
-    }
-    .legend-item { display: flex; align-items: center; gap: 5px; }
-    .legend-line { width: 20px; height: 2px; border-radius: 1px; }
-    .legend-dash {
-      width: 20px; height: 0;
-      border-top: 2px dashed;
-    }
-
-    /* SVG line draw animation */
-    @keyframes drawLine { to { stroke-dashoffset: 0; } }
-    .animated-line {
-      stroke-dasharray: 1000; stroke-dashoffset: 1000;
-      animation: drawLine 1.2s ease forwards;
-    }
-    .animated-line-delayed {
-      stroke-dasharray: 1000; stroke-dashoffset: 1000;
-      animation: drawLine 1.2s ease 0.3s forwards;
-    }
-
-    /* Pulse */
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
-    .pulse { animation: pulse 2s ease-in-out infinite; }
-    .refresh-dot {
-      display: inline-block; width: 7px; height: 7px; border-radius: 50%;
-      background: #4caf50; animation: pulse 2.5s infinite; flex-shrink: 0;
-    }
-
-    /* Modal */
-    .modal-overlay {
-      position: fixed; inset: 0; background: rgba(13,27,46,0.55); z-index: 500;
-      display: none; align-items: center; justify-content: center;
-    }
-    .modal-overlay.open { display: flex; }
-    .modal-card {
-      background: white; border-radius: 10px; padding: 28px; width: 460px;
-      box-shadow: 0 24px 48px rgba(0,0,0,0.2);
-    }
-    .modal-title { font-size: 16px; font-weight: 700; color: var(--gray-900); margin-bottom: 8px; }
-    .modal-body { font-size: 13px; color: var(--gray-600); line-height: 1.65; margin-bottom: 20px; }
-    .modal-warn-box {
-      background: var(--amber-bg); border: 1px solid #ffcc80;
-      border-radius: 6px; padding: 10px 12px; font-size: 12px;
-      color: var(--amber); margin-top: 10px; font-weight: 500;
-    }
-    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
-
-    /* Toast */
-    #toastContainer {
-      position: fixed; bottom: 24px; right: 24px;
-      display: flex; flex-direction: column; gap: 8px; z-index: 1000; pointer-events: none;
-    }
-    .toast {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 16px; border-radius: 7px; font-size: 13px; font-weight: 500;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.18);
-      opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s;
-      pointer-events: auto; min-width: 300px; max-width: 420px;
-    }
-    .toast.show { opacity: 1; transform: translateY(0); }
-    .toast-success { background: #1b5e20; color: white; }
-    .toast-info { background: var(--navy); color: white; }
-    .toast-warn { background: var(--amber); color: white; }
-    .toast-icon { font-size: 15px; flex-shrink: 0; }
-  </style>
+/* Responsive */
+@media (max-width: 900px) {
+  .engine-grid { grid-template-columns: 1fr; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .kpi-grid { grid-template-columns: 1fr; }
+  .page-wrap { padding: var(--space-sm); }
+}
+</style>
 </head>
 <body>
 
 <!-- Top Nav -->
-<nav class="topnav">
+<nav class="topnav" aria-label="Primary navigation">
   <div class="topnav-brand">
-    <span class="logo">PAD</span>
-    <span class="product-name">Provider Anomaly Detection</span>
-    <span class="section">&nbsp;/&nbsp;Model Health</span>
+    <span class="brand-badge">PAD</span>
+    <span>SIU</span>
   </div>
+  <span class="topnav-sep" aria-hidden="true">/</span>
+  <span class="topnav-title">Model Health Dashboard</span>
   <div class="topnav-right">
-    <span class="refresh-dot"></span>
-    <span id="refreshCounter">Live · Auto-refreshes every 60 s</span>
-    &nbsp;·&nbsp; PM + DS Team · Internal View
+    <span class="live-dot" aria-hidden="true"></span>
+    <span>Live, refreshes every 60 s</span>
+    <span id="last-refresh">Last: 14:32:01</span>
+    <span id="current-month-label">Month 3 (Oct 2026)</span>
   </div>
 </nav>
 
-<div class="container">
+<main class="page-wrap">
 
-  <!-- Page Header -->
-  <div class="page-header">
-    <div>
-      <div class="page-title">Model Health Dashboard</div>
-      <div class="page-subtitle">Post-launch monitoring · Visible to PM and DS team only</div>
+  <!-- Month tabs -->
+  <div class="month-tabs" role="tablist" aria-label="Select reporting month">
+    <button class="month-tab" role="tab" aria-selected="false" onclick="updateMonth(1)">Month 1 (Aug)</button>
+    <button class="month-tab" role="tab" aria-selected="false" onclick="updateMonth(2)">Month 2 (Sep)</button>
+    <button class="month-tab active" role="tab" aria-selected="true" onclick="updateMonth(3)">Month 3 (Oct)</button>
+  </div>
+
+  <!-- Status bar -->
+  <div class="status-bar" id="status-bar" role="alert" aria-live="polite">
+    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" class="status-icon"><path d="M7 2L12.5 12H1.5L7 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/><line x1="7" y1="6" x2="7" y2="9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="7" cy="11" r="0.7" fill="currentColor"/></svg>
+    <span id="status-text">E1 override rate above baseline: Engine 1 showing 18.3% operator overrides vs. 12% baseline. Under investigation.</span>
+  </div>
+
+  <!-- Engine cards -->
+  <p class="section-head">Detection engines</p>
+  <div class="engine-grid" id="engine-grid">
+    <!-- Populated by JS -->
+  </div>
+
+  <!-- KPI cards -->
+  <p class="section-head">Key performance indicators</p>
+  <div class="kpi-grid" id="kpi-grid">
+    <!-- Populated by JS -->
+  </div>
+
+  <!-- Override rate breakdown -->
+  <div class="override-section" id="override-section">
+    <div class="override-head">
+      <span class="override-title">Override rate by reason</span>
+      <span class="override-badge" id="override-status-badge">Above target</span>
+      <button class="override-expand-btn" onclick="toggleDrilldown()" id="override-expand-btn" style="white-space: nowrap;">
+        Expand breakdown
+      </button>
     </div>
-    <div class="header-right">
-      <div class="month-tabs">
-        <button class="month-tab" onclick="updateMonth(1)">M1</button>
-        <button class="month-tab" onclick="updateMonth(2)">M2</button>
-        <button class="month-tab active" onclick="updateMonth(3)">M3</button>
-      </div>
-      <span class="month-badge" id="monthBadge">Month 3 of 6</span>
+    <div id="override-bars">
+      <!-- Populated by JS -->
     </div>
   </div>
 
-  <!-- Status Alert -->
-  <div class="status-bar">
-    <span class="icon">⚠</span>
-    <div id="statusText">
-      <strong>E1 Override Rate Elevated</strong> — Engine 1 (Provider Behavior) override rate at 43%, up from 38% at launch.
-      Root cause identified: specialty-specific peer grouping issue. DS team remediating. <strong>Target: resolved before Month 4.</strong>
+  <!-- Drill-down table (specialty) -->
+  <div id="drilldown-table" hidden>
+    <p class="section-head">Override breakdown by provider specialty</p>
+    <div class="data-table-wrap">
+      <table class="data-table" aria-label="Override rate by provider specialty">
+        <thead>
+          <tr>
+            <th>Specialty</th>
+            <th>Cases reviewed</th>
+            <th>Overrides</th>
+            <th>Override rate</th>
+            <th>vs. baseline</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="drilldown-tbody">
+          <!-- Populated by JS -->
+        </tbody>
+      </table>
     </div>
   </div>
 
-  <!-- Engine Status Row -->
-  <div class="engine-status-row">
-
-    <div class="engine-card engine-warn">
-      <div class="engine-dot pulse"></div>
-      <div class="engine-info">
-        <div class="engine-name">E1 · Provider Behavior</div>
-        <div class="engine-model">DBSCAN Clustering</div>
-        <div class="engine-override" id="e1EngineOverride">Override rate: <strong style="color:var(--amber)">43%</strong> · Remediating</div>
-      </div>
-      <span class="engine-badge warn" id="e1EngineBadge">ELEVATED</span>
-    </div>
-
-    <div class="engine-card engine-ok">
-      <div class="engine-dot"></div>
-      <div class="engine-info">
-        <div class="engine-name">E2 · Structured Health Analytics</div>
-        <div class="engine-model">FCNN · Decision Tree</div>
-        <div class="engine-override">Override rate: <strong style="color:var(--green)">10%</strong> · Nominal</div>
-      </div>
-      <span class="engine-badge ok">OK</span>
-    </div>
-
-    <div class="engine-card engine-ok">
-      <div class="engine-dot"></div>
-      <div class="engine-info">
-        <div class="engine-name">E3 · MediCode Insight</div>
-        <div class="engine-model">Code2Vec · UMLS Network</div>
-        <div class="engine-override">Override rate: <strong style="color:var(--green)">8%</strong> · Nominal</div>
-      </div>
-      <span class="engine-badge ok">OK</span>
-    </div>
-
-  </div>
-
-  <!-- KPI Cards -->
-  <div class="kpi-grid">
-
-    <!-- P@100 with sparkline -->
-    <div class="kpi-card">
-      <div class="kpi-label">Precision @ 100</div>
-      <div class="kpi-body">
-        <div class="kpi-numbers">
-          <div class="kpi-value" id="kpiP100">51%</div>
-          <div class="kpi-delta up" id="kpiP100Delta">▲ +2pp vs Month 2</div>
-          <div class="kpi-target">Min: 40% · Target: 60%</div>
-        </div>
-        <!-- Sparkline: M1=48%, M2=49%, M3=51% — viewbox y: 48→20, 49→14, 51→3 (scaled) -->
-        <svg viewBox="0 0 54 24" width="54" height="24" style="margin-bottom:2px; flex-shrink:0">
-          <polyline points="2,20 27,14 52,3"
-            fill="none" stroke="#2e7d32" stroke-width="2"
-            stroke-linejoin="round" stroke-linecap="round"/>
-          <circle id="spark-p100-1" cx="2"  cy="20" r="2.5" fill="#2e7d32" opacity="0.4"/>
-          <circle id="spark-p100-2" cx="27" cy="14" r="2.5" fill="#2e7d32" opacity="0.4"/>
-          <circle id="spark-p100-3" cx="52" cy="3"  r="3.5" fill="#2e7d32" opacity="1"/>
-        </svg>
-      </div>
-    </div>
-
-    <!-- Case Conversion with sparkline -->
-    <div class="kpi-card">
-      <div class="kpi-label">Case Conversion Rate</div>
-      <div class="kpi-body">
-        <div class="kpi-numbers">
-          <div class="kpi-value" id="kpiConv">41%</div>
-          <div class="kpi-delta up" id="kpiConvDelta">▲ +3pp vs Month 2</div>
-          <div class="kpi-target">Baseline at launch: 34%</div>
-        </div>
-        <!-- Sparkline: M1=34%, M2=38%, M3=41% -->
-        <svg viewBox="0 0 54 24" width="54" height="24" style="margin-bottom:2px; flex-shrink:0">
-          <polyline points="2,20 27,9 52,2"
-            fill="none" stroke="#2e7d32" stroke-width="2"
-            stroke-linejoin="round" stroke-linecap="round"/>
-          <circle id="spark-conv-1" cx="2"  cy="20" r="2.5" fill="#2e7d32" opacity="0.4"/>
-          <circle id="spark-conv-2" cx="27" cy="9"  r="2.5" fill="#2e7d32" opacity="0.4"/>
-          <circle id="spark-conv-3" cx="52" cy="2"  r="3.5" fill="#2e7d32" opacity="1"/>
-        </svg>
-      </div>
-    </div>
-
-    <!-- E1 Override -->
-    <div class="kpi-card">
-      <div class="kpi-label">E1 Override Rate</div>
-      <div class="kpi-value" id="kpiE1Val" style="color:var(--amber)">43%</div>
-      <div class="kpi-delta warn" id="kpiE1Delta">⚠ Elevated · Above 40% threshold</div>
-      <div class="kpi-target" id="kpiE1Target">Threshold: &lt; 40% · Was: 38% at launch</div>
-    </div>
-
-    <!-- Queue Utilization with SVG donut -->
-    <div class="kpi-card">
-      <div class="kpi-label">Queue Utilization</div>
-      <div class="kpi-donut-body">
-        <!-- Donut: r=35, circumference=219.9 -->
-        <svg viewBox="0 0 100 100" width="72" height="72" style="flex-shrink:0">
-          <circle cx="50" cy="50" r="35"
-            fill="none" stroke="#e9ecef" stroke-width="10"/>
-          <circle id="donutArc" cx="50" cy="50" r="35"
-            fill="none" stroke="#1565c0" stroke-width="10"
-            stroke-dasharray="195.7 219.9"
-            stroke-linecap="round"
-            transform="rotate(-90 50 50)"
-            style="transition: stroke-dasharray .5s ease"/>
-          <text id="donutText" x="50" y="46" text-anchor="middle"
-            font-size="16" font-weight="800" fill="#212529" font-family="-apple-system,sans-serif">89%</text>
-          <text x="50" y="60" text-anchor="middle"
-            font-size="8" fill="#868e96" font-family="-apple-system,sans-serif">utilization</text>
-        </svg>
-        <div class="kpi-donut-meta">
-          <div class="kpi-delta up" id="kpiUtilDelta">▲ +2pp vs Month 2</div>
-          <div class="kpi-target" style="margin-top:4px">% of cases opened via PAD vs legacy tools</div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- Override Rate + Drill-Down -->
-  <div class="two-col">
-
-    <div class="card">
-      <div class="card-title">Override Rate by Engine</div>
-      <div class="override-list">
-
-        <!-- E1: clickable — toggles drill-down -->
-        <div class="override-item clickable active" id="e1OverrideRow" onclick="toggleDrillDown()">
-          <div class="override-meta">
-            <span class="override-engine">E1 · Provider Behavior (DBSCAN)</span>
-            <span style="display:flex; align-items:center; gap:6px">
-              <span class="override-pct warn" id="e1OverridePct">43%</span>
-              <span class="override-status status-warn">⚠ ELEVATED</span>
-            </span>
-          </div>
-          <div class="bar-track"><div class="bar-fill bar-amber" id="e1OverrideBar" style="width:43%"></div></div>
-          <div style="font-size:11px; color:var(--gray-400); margin-top:2px">
-            Sustained 3 months. Specialty peer grouping issue — oncology/dialysis flagged vs. GP baseline.
-            <span style="color:var(--blue); font-weight:600">↗ Click to see breakdown</span>
-          </div>
-        </div>
-
-        <div class="override-item">
-          <div class="override-meta">
-            <span class="override-engine">E2 · Structured Health Analytics (FCNN)</span>
-            <span style="display:flex; align-items:center; gap:6px">
-              <span class="override-pct ok">10%</span>
-              <span class="override-status status-ok">✓ OK</span>
-            </span>
-          </div>
-          <div class="bar-track"><div class="bar-fill bar-green" style="width:10%"></div></div>
-        </div>
-
-        <div class="override-item">
-          <div class="override-meta">
-            <span class="override-engine">E3 · MediCode Insight (Code2Vec)</span>
-            <span style="display:flex; align-items:center; gap:6px">
-              <span class="override-pct ok">8%</span>
-              <span class="override-status status-ok">✓ OK</span>
-            </span>
-          </div>
-          <div class="bar-track"><div class="bar-fill bar-green" style="width:8%"></div></div>
-        </div>
-
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">
-        E1 Override Drill-Down — by Provider Specialty
-        <button class="card-toggle" id="drillToggleBtn" onclick="toggleDrillDown()">▲ Collapse</button>
-      </div>
-      <div id="drillDownBody">
-        <table class="drill-table">
-          <thead>
-            <tr>
-              <th>Specialty</th>
-              <th>Override %</th>
-              <th>Rate</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Oncology centers</td>
-              <td style="color:var(--red); font-weight:700">73%</td>
-              <td>
-                <div class="drill-bar-wrap">
-                  <div class="drill-bar-track"><div class="drill-bar-fill drill-bar-red" style="width:73%"></div></div>
-                </div>
-              </td>
-              <td><span class="action-note">Remediating</span></td>
-            </tr>
-            <tr>
-              <td>Dialysis clinics</td>
-              <td style="color:var(--red); font-weight:700">68%</td>
-              <td>
-                <div class="drill-bar-wrap">
-                  <div class="drill-bar-track"><div class="drill-bar-fill drill-bar-red" style="width:68%"></div></div>
-                </div>
-              </td>
-              <td><span class="action-note">Remediating</span></td>
-            </tr>
-            <tr>
-              <td>Cardiology (private)</td>
-              <td style="color:var(--amber); font-weight:700">34%</td>
-              <td>
-                <div class="drill-bar-wrap">
-                  <div class="drill-bar-track"><div class="drill-bar-fill drill-bar-amber" style="width:34%"></div></div>
-                </div>
-              </td>
-              <td><span class="action-note">Monitoring</span></td>
-            </tr>
-            <tr>
-              <td>General practitioners</td>
-              <td style="color:var(--green); font-weight:700">8%</td>
-              <td>
-                <div class="drill-bar-wrap">
-                  <div class="drill-bar-track"><div class="drill-bar-fill drill-bar-green" style="width:8%"></div></div>
-                </div>
-              </td>
-              <td style="color:var(--gray-400); font-size:12px">No action</td>
-            </tr>
-          </tbody>
-        </table>
-        <div style="margin-top:10px; font-size:12px; color:var(--gray-600); background:var(--gray-50); padding:8px 10px; border-radius:4px">
-          Root cause: DBSCAN clustering compares specialty providers against GP billing baseline.
-          Oncology and dialysis have structurally higher volumes — not fraud signals.
-          Fix: Stratified peer groups by <code style="font-size:11px">specialty_type</code>.
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- 6-Month Trend Chart + Feature Drift -->
-  <div class="two-col">
-
-    <div class="card">
-      <div class="card-title">6-Month Performance Trend</div>
-
-      <!--
-        SVG Chart — ViewBox: 0 0 420 210
-        Chart area: x=55→400, y=18→170
-        Y scale: y(v) = 170 - (v-20)*3  (20%→170, 70%→20)
-          40% min → y=110  |  60% target → y=50
-          P@100: 48%→86, 49%→83, 51%→77
-          Conv:  34%→128, 38%→116, 41%→107
-        X positions: M1=100, M2=210, M3=320
-      -->
-      <svg viewBox="0 0 420 210" width="100%" style="display:block">
-        <!-- Grid lines -->
-        <line x1="55" y1="110" x2="400" y2="110" stroke="#f0f0f0" stroke-width="1"/>
-        <line x1="55" y1="80"  x2="400" y2="80"  stroke="#f0f0f0" stroke-width="1"/>
-        <line x1="55" y1="50"  x2="400" y2="50"  stroke="#f0f0f0" stroke-width="1"/>
-        <line x1="55" y1="170" x2="400" y2="170" stroke="#e9ecef" stroke-width="1"/>
-
-        <!-- 40% minimum threshold (dashed red) -->
-        <line x1="55" y1="110" x2="400" y2="110"
-          stroke="#c62828" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.7"/>
-        <!-- 60% target (dashed green) -->
-        <line x1="55" y1="50"  x2="400" y2="50"
-          stroke="#2e7d32" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.7"/>
-
-        <!-- Threshold labels -->
-        <text x="403" y="114" font-size="9" fill="#c62828" font-family="-apple-system,sans-serif" opacity="0.9">40% min</text>
-        <text x="403" y="54"  font-size="9" fill="#2e7d32" font-family="-apple-system,sans-serif" opacity="0.9">60% target</text>
-
-        <!-- Y-axis labels -->
-        <text x="50" y="174" text-anchor="end" font-size="9" fill="#868e96" font-family="-apple-system,sans-serif">20%</text>
-        <text x="50" y="114" text-anchor="end" font-size="9" fill="#868e96" font-family="-apple-system,sans-serif">40%</text>
-        <text x="50" y="84"  text-anchor="end" font-size="9" fill="#868e96" font-family="-apple-system,sans-serif">50%</text>
-        <text x="50" y="54"  text-anchor="end" font-size="9" fill="#868e96" font-family="-apple-system,sans-serif">60%</text>
-
-        <!-- Axes -->
-        <line x1="55" y1="170" x2="55"  y2="18"  stroke="#dee2e6" stroke-width="1"/>
-        <line x1="55" y1="170" x2="400" y2="170" stroke="#dee2e6" stroke-width="1"/>
-
-        <!-- Pending region (M4–M6) -->
-        <rect x="330" y="18" width="70" height="152" fill="#f8f9fa" opacity="0.7"/>
-        <text x="365" y="100" text-anchor="middle" font-size="9" fill="#adb5bd"
-          font-family="-apple-system,sans-serif">M4–M6 pending</text>
-
-        <!-- Current month indicator (starts at M3) -->
-        <line id="chartIndicator" x1="320" y1="18" x2="320" y2="170"
-          stroke="#1565c0" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.5"/>
-
-        <!-- P@100 line (blue) — animated -->
-        <polyline class="animated-line" points="100,86 210,83 320,77"
-          fill="none" stroke="#1565c0" stroke-width="2.5"
-          stroke-linejoin="round" stroke-linecap="round"/>
-        <!-- P@100 data points -->
-        <circle cx="100" cy="86" r="3.5" fill="white" stroke="#1565c0" stroke-width="2"/>
-        <circle cx="210" cy="83" r="3.5" fill="white" stroke="#1565c0" stroke-width="2"/>
-        <circle cx="320" cy="77" r="4.5" fill="#1565c0" stroke="white" stroke-width="2"/>
-        <!-- P@100 value labels -->
-        <text x="96"  y="78" font-size="9" fill="#1565c0" font-family="-apple-system,sans-serif" text-anchor="middle">48%</text>
-        <text x="206" y="75" font-size="9" fill="#1565c0" font-family="-apple-system,sans-serif" text-anchor="middle">49%</text>
-        <text x="323" y="68" font-size="9" fill="#1565c0" font-weight="700" font-family="-apple-system,sans-serif">51%</text>
-
-        <!-- Conversion line (green) — animated with delay -->
-        <polyline class="animated-line-delayed" points="100,128 210,116 320,107"
-          fill="none" stroke="#2e7d32" stroke-width="2.5"
-          stroke-linejoin="round" stroke-linecap="round"/>
-        <!-- Conv data points -->
-        <circle cx="100" cy="128" r="3.5" fill="white" stroke="#2e7d32" stroke-width="2"/>
-        <circle cx="210" cy="116" r="3.5" fill="white" stroke="#2e7d32" stroke-width="2"/>
-        <circle cx="320" cy="107" r="4.5" fill="#2e7d32" stroke="white" stroke-width="2"/>
-        <!-- Conv value labels -->
-        <text x="96"  y="140" font-size="9" fill="#2e7d32" font-family="-apple-system,sans-serif" text-anchor="middle">34%</text>
-        <text x="206" y="128" font-size="9" fill="#2e7d32" font-family="-apple-system,sans-serif" text-anchor="middle">38%</text>
-        <text x="323" y="100" font-size="9" fill="#2e7d32" font-weight="700" font-family="-apple-system,sans-serif">41%</text>
-
-        <!-- X-axis month labels -->
-        <text id="label-m1" x="100" y="186" text-anchor="middle" font-size="10" fill="#868e96" font-family="-apple-system,sans-serif">M1</text>
-        <text id="label-m2" x="210" y="186" text-anchor="middle" font-size="10" fill="#868e96" font-family="-apple-system,sans-serif">M2</text>
-        <text id="label-m3" x="320" y="186" text-anchor="middle" font-size="10" fill="#212529" font-weight="700" font-family="-apple-system,sans-serif">M3 ←</text>
-      </svg>
-
-      <!-- Legend -->
+  <!-- 6-month performance chart -->
+  <div class="chart-section">
+    <div class="chart-head">
+      <span class="chart-title">6-month performance trend</span>
       <div class="chart-legend">
-        <div class="legend-item">
-          <div class="legend-line" style="background:#1565c0"></div>
-          <span>Precision @ 100</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-line" style="background:#2e7d32"></div>
-          <span>Case Conversion</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-dash" style="border-color:#c62828; opacity:0.7"></div>
-          <span>40% min</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-dash" style="border-color:#2e7d32; opacity:0.7"></div>
-          <span>60% target</span>
-        </div>
+        <span><span class="legend-swatch"></span>Precision@100</span>
+        <span><span class="legend-swatch ok"></span>Case conversion</span>
+        <span><span class="legend-swatch threshold"></span>Threshold</span>
       </div>
     </div>
-
-    <div class="card">
-      <div class="card-title">Feature Drift Check</div>
-      <div>
-        <div class="drift-row">
-          <span class="drift-feature">billing_volume</span>
-          <span class="drift-val">+0.1σ</span>
-          <span class="drift-status drift-stable">✓ Stable</span>
-        </div>
-        <div class="drift-row">
-          <span class="drift-feature">avg_charge</span>
-          <span class="drift-val">+0.2σ</span>
-          <span class="drift-status drift-stable">✓ Stable</span>
-        </div>
-        <div class="drift-row">
-          <span class="drift-feature">services_per_patient</span>
-          <span class="drift-val">+0.2σ</span>
-          <span class="drift-status drift-stable">✓ Stable</span>
-        </div>
-        <div class="drift-row">
-          <span class="drift-feature">specialty_code</span>
-          <span class="drift-val"><strong>+0.8σ</strong></span>
-          <span class="drift-status drift-yellow">⚠ Monitor</span>
-        </div>
-        <div class="drift-row">
-          <span class="drift-feature">specialty_deviation_pct</span>
-          <span class="drift-val">+0.3σ</span>
-          <span class="drift-status drift-stable">✓ Stable</span>
-        </div>
-      </div>
-      <div style="margin-top:12px; font-size:12px; color:var(--gray-600); background:var(--gray-50); padding:8px 10px; border-radius:4px">
-        specialty_code shifted after Q3 billing cycle. No retraining triggered — within acceptable range. Flag for Month 4 review ahead of Q4 cycle.
-      </div>
-    </div>
-
+    <svg class="chart-svg" viewBox="0 0 760 180" aria-label="6-month performance trend chart">
+      <!-- Grid -->
+      <line class="chart-axis-line" x1="60" y1="20" x2="60" y2="155"/>
+      <line class="chart-axis-line" x1="60" y1="155" x2="740" y2="155"/>
+      <line class="chart-grid" x1="60" y1="60" x2="740" y2="60"/>
+      <line class="chart-grid" x1="60" y1="100" x2="740" y2="100"/>
+      <line class="chart-grid" x1="60" y1="140" x2="740" y2="140"/>
+      <!-- Threshold (82%) -->
+      <line class="chart-threshold" x1="60" y1="73" x2="740" y2="73"/>
+      <text class="chart-label" x="44" y="76" text-anchor="end">82%</text>
+      <!-- Y axis labels -->
+      <text class="chart-label" x="44" y="23" text-anchor="end">100%</text>
+      <text class="chart-label" x="44" y="63" text-anchor="end">90%</text>
+      <text class="chart-label" x="44" y="103" text-anchor="end">80%</text>
+      <text class="chart-label" x="44" y="143" text-anchor="end">70%</text>
+      <!-- X axis labels (M1 to M6) -->
+      <text class="chart-label" x="174" y="170" text-anchor="middle">M1</text>
+      <text class="chart-label" x="288" y="170" text-anchor="middle">M2</text>
+      <text class="chart-label" x="402" y="170" text-anchor="middle">M3</text>
+      <text class="chart-label" x="516" y="170" text-anchor="middle">M4</text>
+      <text class="chart-label" x="630" y="170" text-anchor="middle">M5</text>
+      <text class="chart-label" x="174" y="170" text-anchor="middle">M1</text>
+      <!-- Precision@100 line (azure) -->
+      <polyline class="chart-p100-line" points="174,52 288,48 402,55 516,45 630,42 720,38"/>
+      <!-- Case conversion line (green) -->
+      <polyline class="chart-conv-line" points="174,78 288,74 402,80 516,70 630,65 720,60"/>
+      <!-- Data points Precision -->
+      <circle cx="174" cy="52" r="3" fill="var(--color-accent)"/>
+      <circle cx="288" cy="48" r="3" fill="var(--color-accent)"/>
+      <circle cx="402" cy="55" r="3" fill="var(--color-accent)"/>
+      <circle cx="516" cy="45" r="3" fill="var(--color-accent)"/>
+      <circle cx="630" cy="42" r="3" fill="var(--color-accent)"/>
+      <circle cx="720" cy="38" r="3" fill="var(--color-accent)"/>
+      <!-- Data points Conversion -->
+      <circle cx="174" cy="78" r="3" fill="var(--color-risk-ok)"/>
+      <circle cx="288" cy="74" r="3" fill="var(--color-risk-ok)"/>
+      <circle cx="402" cy="80" r="3" fill="var(--color-risk-ok)"/>
+      <circle cx="516" cy="70" r="3" fill="var(--color-risk-ok)"/>
+      <circle cx="630" cy="65" r="3" fill="var(--color-risk-ok)"/>
+      <circle cx="720" cy="60" r="3" fill="var(--color-risk-ok)"/>
+      <!-- Pending months label -->
+      <text class="chart-label" x="630" y="18" text-anchor="middle">M4 to M6 pending</text>
+      <line class="chart-grid" x1="516" y1="20" x2="516" y2="155"/>
+    </svg>
   </div>
 
-  <!-- Fairness Check + Actions -->
-  <div class="two-col">
-
-    <div class="card">
-      <div class="card-title">Fairness Check — Provider Segments</div>
-      <div class="fairness-grid">
-        <div class="fairness-row">
-          <span class="fairness-label">Rural providers (flag rate vs avg)</span>
-          <span style="display:flex; align-items:center; gap:8px">
-            <span class="fairness-value">1.3×</span>
-            <span class="check-ok">✓ OK</span>
-          </span>
-        </div>
-        <div class="fairness-row">
-          <span class="fairness-label">Urban providers (flag rate vs avg)</span>
-          <span style="display:flex; align-items:center; gap:8px">
-            <span class="fairness-value">1.0×</span>
-            <span class="check-ok">✓ OK</span>
-          </span>
-        </div>
-        <div class="fairness-row">
-          <span class="fairness-label">Groups above 1.5× threshold</span>
-          <span style="display:flex; align-items:center; gap:8px">
-            <span class="fairness-value">None</span>
-            <span class="check-ok">✓ OK</span>
-          </span>
-        </div>
-        <div class="fairness-row">
-          <span class="fairness-label">RAI escalation required</span>
-          <span style="display:flex; align-items:center; gap:8px">
-            <span class="fairness-value">No</span>
-            <span class="check-ok">✓ Clear</span>
-          </span>
-        </div>
-      </div>
-      <div style="margin-top:12px; font-size:12px; color:var(--gray-600)">
-        Rural provider geographic bias caught in shadow mode (pre-launch) and resolved before go-live. No re-emergence.
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Month 3 Actions</div>
-      <div class="action-list">
-        <div class="action-item">
-          <span class="checkbox">☑</span>
-          <div>
-            <div class="action-text">E1 clustering — stratify peer groups by <code style="font-size:12px">specialty_type</code></div>
-            <div class="action-sub">DS team: oncology / dialysis / cardiology-private / cardiology-hospital / GP. Target: live before Month 4 review.</div>
-          </div>
-        </div>
-        <div class="action-item">
-          <span class="checkbox">☑</span>
-          <div>
-            <div class="action-text">specialty_code drift — schedule monitoring for Q4 billing cycle</div>
-            <div class="action-sub">No retraining triggered. Flag for Month 4 review. Full monthly refresh scheduled Month 6.</div>
-          </div>
-        </div>
-      </div>
-      <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--gray-200); font-size:12px; color:var(--gray-400)">
-        Retraining triggered this month: <strong style="color:var(--gray-600)">No</strong> &nbsp;·&nbsp; All metrics within acceptable thresholds &nbsp;·&nbsp; Next full refresh: Month 6
-      </div>
-    </div>
-
+  <!-- Feature drift table -->
+  <div class="drift-section">
+    <p class="section-head" style="padding: var(--space-md) var(--space-md) var(--space-xs);">Feature drift monitor</p>
+    <table class="drift-table" aria-label="Feature drift monitor">
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th>Baseline mean</th>
+          <th>Current mean</th>
+          <th>PSI score</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="drift-tbody">
+        <!-- Populated by JS -->
+      </tbody>
+    </table>
   </div>
 
-  <!-- Bottom Action Bar -->
-  <div class="action-bar">
-    <span style="font-size:13px; color:var(--gray-400)" id="actionBarMonth">Month 3 review</span>
-    <div class="btn-group">
-      <button class="btn btn-secondary" onclick="exportReport()">Export Report</button>
-      <button class="btn btn-secondary" onclick="viewAuditLog()">View Audit Log</button>
-      <button class="btn btn-ghost" onclick="openRetrainingModal()">Trigger Retraining</button>
+  <!-- Fairness check -->
+  <div class="fairness-section">
+    <p class="section-head" style="margin-bottom: var(--space-sm);">Fairness and bias check</p>
+    <div class="fairness-row">
+      <span class="fairness-label">Geographic disparity index</span>
+      <span class="fairness-val">0.03</span>
+      <span class="fairness-range">Target: &lt;0.05</span>
+      <span class="fairness-status"><span class="td-badge ok">Pass</span></span>
+    </div>
+    <div class="fairness-row">
+      <span class="fairness-label">Provider size bias ratio</span>
+      <span class="fairness-val">1.02</span>
+      <span class="fairness-range">Target: 0.9 to 1.1</span>
+      <span class="fairness-status"><span class="td-badge ok">Pass</span></span>
+    </div>
+    <div class="fairness-row">
+      <span class="fairness-label">Specialty concentration (HHI)</span>
+      <span class="fairness-val">0.08</span>
+      <span class="fairness-range">Target: &lt;0.12</span>
+      <span class="fairness-status"><span class="td-badge ok">Pass</span></span>
+    </div>
+    <div class="fairness-row">
+      <span class="fairness-label">Retraining trigger</span>
+      <span class="fairness-val">None</span>
+      <span class="fairness-range">PSI &gt;0.2</span>
+      <span class="fairness-status"><span class="td-badge ok">Clear</span></span>
     </div>
   </div>
 
-</div>
+  <!-- Month 3 actions -->
+  <div class="actions-section" id="actions-section">
+    <p class="section-head" style="margin-bottom: var(--space-sm);">Month 3 action items</p>
+    <div class="action-item">
+      <div class="action-check done" aria-label="Completed"></div>
+      <span class="action-text done">Investigate E1 override spike: root cause identified (structurally higher cardiology volumes, not fraud signals)</span>
+      <span class="action-owner">Data Science</span>
+    </div>
+    <div class="action-item">
+      <div class="action-check done" aria-label="Completed"></div>
+      <span class="action-text done">Update E1 threshold from 0.78 to 0.81 for cardiology specialty</span>
+      <span class="action-owner">ML Ops</span>
+    </div>
+    <div class="action-item">
+      <div class="action-check" aria-label="Incomplete"></div>
+      <span class="action-text">Schedule E2 retraining for Month 4 (baseline drift: PSI 0.18, approaching threshold)</span>
+      <span class="action-owner">ML Ops</span>
+    </div>
+    <div class="action-item">
+      <div class="action-check" aria-label="Incomplete"></div>
+      <span class="action-text">Validate updated fairness metrics post E1 threshold adjustment</span>
+      <span class="action-owner">Compliance</span>
+    </div>
+    <div class="action-item">
+      <div class="action-check" aria-label="Incomplete"></div>
+      <span class="action-text">Present Month 3 findings to SIU leadership (scheduled Nov 5)</span>
+      <span class="action-owner">PM</span>
+    </div>
+  </div>
 
-<!-- Retraining Modal -->
-<div id="retrainingModal" class="modal-overlay" onclick="handleModalClick(event)">
+  <!-- Action bar -->
+  <div class="action-bar" role="toolbar" aria-label="Dashboard actions">
+    <button class="btn btn-primary" onclick="openRetrainingModal()">Schedule retraining</button>
+    <button class="btn btn-secondary" onclick="showToast('Report exported successfully.', 'success')">Export report</button>
+    <button class="btn btn-warning" onclick="showToast('Escalation submitted to SIU leadership.', 'info')">Escalate findings</button>
+    <span class="action-bar-meta" id="action-bar-meta">Last export: Oct 30, 2026. Audit log: 142 entries, last entry 14:31:58.</span>
+  </div>
+
+</main>
+
+<!-- Retraining modal -->
+<div class="modal-overlay" id="retraining-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-title">
   <div class="modal-card">
-    <div class="modal-title">Trigger E1 Engine Retraining</div>
-    <div class="modal-body">
-      This will queue a full retraining job for Engine 1 (Provider Behavior / DBSCAN) using the corrected
-      <code style="font-size:12px; background:var(--gray-100); padding:1px 4px; border-radius:3px">specialty_type</code>
-      stratified peer groups. The current E1 model will remain active until the job completes.
-      <div class="modal-warn-box">
-        ⚠ Retraining takes 4–6 hours. E1 leads will continue using the current model during this window.
-        DS team will be notified automatically on completion.
+    <p class="modal-title" id="modal-title">Schedule model retraining</p>
+    <p class="modal-desc">Initiate a full retraining cycle for the selected engine. Estimated downtime: 4 to 6 hours during off-peak window.</p>
+    <div class="modal-info">
+      <div class="modal-info-row">
+        <span class="modal-info-label">Target engine</span>
+        <span class="modal-info-val" id="modal-engine">E2: Temporal Pattern</span>
+      </div>
+      <div class="modal-info-row">
+        <span class="modal-info-label">Trigger reason</span>
+        <span class="modal-info-val">PSI drift 0.18 (approaching 0.20 threshold)</span>
+      </div>
+      <div class="modal-info-row">
+        <span class="modal-info-label">Training window</span>
+        <span class="modal-info-val">90-day rolling. Nov 1 to Feb 1 2027.</span>
+      </div>
+      <div class="modal-info-row">
+        <span class="modal-info-label">Estimated completion</span>
+        <span class="modal-info-val">4 to 6 hours</span>
       </div>
     </div>
+    <p class="modal-warn">This will temporarily reduce detection coverage during the retraining window. Coordinate with SIU operations before proceeding.</p>
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="confirmRetraining()">Confirm &amp; Queue Job</button>
+      <button class="btn btn-secondary" onclick="closeRetrainingModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmRetrain()">Confirm and schedule</button>
     </div>
   </div>
 </div>
 
 <!-- Toast container -->
-<div id="toastContainer"></div>
+<div class="toast-container" id="toast-container" aria-live="assertive" aria-atomic="true"></div>
 
 <script>
-  const circ = 219.9;
-
-  const monthData = {
-    1: {
-      label: 'Month 1 of 6',
-      p100: '48%', p100Delta: 'First month · Min threshold: 40%', p100DeltaClass: 'up',
-      conv: '34%', convDelta: 'Baseline month · Launch: 34%', convDeltaClass: 'up',
-      e1Val: '41%', e1Delta: '⚠ Elevated · Climbing from 38% at launch', e1DeltaClass: 'warn',
-      e1Target: 'Threshold: < 40% · Was: 38% at launch',
-      util: '89%', utilFill: (83 / 100 * circ).toFixed(1),
-      utilDelta: '▲ Strong early adoption',
-      e1OverridePct: 41, e1OverrideBarW: 41,
-      e1EngineBadgeText: 'ELEVATED', e1EngineBadgeClass: 'warn',
-      e1EngineOverrideHtml: 'Override rate: <strong style="color:var(--amber)">41%</strong> · Investigating',
-      statusHtml: '<strong>E1 Override Rate Elevated</strong> — Engine 1 override rate at 41%, climbing from 38% at launch. Root cause investigation initiated. <strong>DS team investigating.</strong>',
-      actionBarMonth: 'Month 1 review',
-      chartX: 100,
-      sparkSizes: [3.5, 2.5, 2.5],
+const monthData = {
+  1: {
+    label: "Month 1 (Aug 2026)",
+    statusClass: "ok",
+    statusText: "All engines operating within normal parameters. Month 1 baseline established.",
+    engines: [
+      { id: "E1", name: "E1: Claim Anomaly", desc: "Detects statistical outliers in claim patterns vs. peer cohorts.", status: "ok", metrics: { precision: "94.2%", recall: "88.1%" } },
+      { id: "E2", name: "E2: Temporal Pattern", desc: "Identifies time-series anomalies in provider billing frequency.", status: "ok", metrics: { precision: "91.7%", recall: "84.3%" } },
+      { id: "E3", name: "E3: Network Graph", desc: "Surfaces coordinated fraud rings via provider relationship graph.", status: "ok", metrics: { precision: "89.4%", recall: "79.8%" } }
+    ],
+    kpis: {
+      precision: { val: "94.2%", delta: "Baseline", deltaClass: "neu" },
+      conversion: { val: "31.4%", delta: "Baseline", deltaClass: "neu" },
+      override: { val: "11.8%", delta: "Within 12% baseline", deltaClass: "pos", warn: false },
+      queue: { val: "67%", delta: "173 / 260 capacity", deltaClass: "neu" }
     },
-    2: {
-      label: 'Month 2 of 6',
-      p100: '49%', p100Delta: '▲ +1pp vs Month 1', p100DeltaClass: 'up',
-      conv: '38%', convDelta: '▲ +4pp vs Month 1', convDeltaClass: 'up',
-      e1Val: '41%', e1Delta: '⚠ Elevated · Sustained 2 months', e1DeltaClass: 'warn',
-      e1Target: 'Threshold: < 40% · Root cause identified',
-      util: '87%', utilFill: (87 / 100 * circ).toFixed(1),
-      utilDelta: '▲ +4pp vs Month 1',
-      e1OverridePct: 41, e1OverrideBarW: 41,
-      e1EngineBadgeText: 'ELEVATED', e1EngineBadgeClass: 'warn',
-      e1EngineOverrideHtml: 'Override rate: <strong style="color:var(--amber)">41%</strong> · Remediating',
-      statusHtml: '<strong>E1 Override Rate Elevated</strong> — Engine 1 override rate at 41%, sustained for 2 months. Root cause identified: specialty-specific peer grouping issue. <strong>DS team remediating.</strong>',
-      actionBarMonth: 'Month 2 review',
-      chartX: 210,
-      sparkSizes: [2.5, 3.5, 2.5],
+    overrideBadge: "Ok",
+    overrideBadgeClass: "ok",
+    overrideBars: [
+      { label: "Insufficient evidence", pct: 48, warn: false },
+      { label: "Clinical justification provided", pct: 31, warn: false },
+      { label: "Duplicate claim", pct: 12, warn: false },
+      { label: "Other", pct: 9, warn: false }
+    ],
+    drilldown: [
+      { specialty: "Cardiology", reviewed: 824, overrides: 91, rate: "11.0%", vs: "+0.5%", status: "ok" },
+      { specialty: "Orthopedics", reviewed: 612, overrides: 74, rate: "12.1%", vs: "+1.1%", status: "ok" },
+      { specialty: "Neurology", reviewed: 445, overrides: 50, rate: "11.2%", vs: "+0.8%", status: "ok" }
+    ],
+    drift: [
+      { feature: "claim_amount_zscore", baseline: "0.00", current: "0.01", psi: "0.003", status: "ok" },
+      { feature: "days_since_last_claim", baseline: "14.2", current: "14.5", psi: "0.007", status: "ok" },
+      { feature: "network_centrality", baseline: "0.42", current: "0.43", psi: "0.005", status: "ok" }
+    ]
+  },
+  2: {
+    label: "Month 2 (Sep 2026)",
+    statusClass: "info",
+    statusText: "Minor E2 drift detected. PSI at 0.13, within acceptable range. Monitoring closely.",
+    engines: [
+      { id: "E1", name: "E1: Claim Anomaly", desc: "Detects statistical outliers in claim patterns vs. peer cohorts.", status: "ok", metrics: { precision: "93.8%", recall: "87.6%" } },
+      { id: "E2", name: "E2: Temporal Pattern", desc: "Identifies time-series anomalies in provider billing frequency.", status: "warn", metrics: { precision: "90.2%", recall: "83.1%" } },
+      { id: "E3", name: "E3: Network Graph", desc: "Surfaces coordinated fraud rings via provider relationship graph.", status: "ok", metrics: { precision: "90.1%", recall: "80.4%" } }
+    ],
+    kpis: {
+      precision: { val: "93.8%", delta: "0.4pp below Month 1", deltaClass: "neg" },
+      conversion: { val: "30.9%", delta: "0.5pp below Month 1", deltaClass: "neg" },
+      override: { val: "13.4%", delta: "Above 12% baseline", deltaClass: "neu", warn: false },
+      queue: { val: "74%", delta: "192 / 260 capacity", deltaClass: "neu" }
     },
-    3: {
-      label: 'Month 3 of 6',
-      p100: '51%', p100Delta: '▲ +2pp vs Month 2', p100DeltaClass: 'up',
-      conv: '41%', convDelta: '▲ +3pp vs Month 2', convDeltaClass: 'up',
-      e1Val: '43%', e1Delta: '⚠ Elevated · Above 40% threshold', e1DeltaClass: 'warn',
-      e1Target: 'Threshold: < 40% · Was: 38% at launch',
-      util: '89%', utilFill: (89 / 100 * circ).toFixed(1),
-      utilDelta: '▲ +2pp vs Month 2',
-      e1OverridePct: 43, e1OverrideBarW: 43,
-      e1EngineBadgeText: 'ELEVATED', e1EngineBadgeClass: 'warn',
-      e1EngineOverrideHtml: 'Override rate: <strong style="color:var(--amber)">43%</strong> · Remediating',
-      statusHtml: '<strong>E1 Override Rate Elevated</strong> — Engine 1 (Provider Behavior) override rate at 43%, up from 38% at launch. Root cause identified: specialty-specific peer grouping issue. DS team remediating. <strong>Target: resolved before Month 4.</strong>',
-      actionBarMonth: 'Month 3 review',
-      chartX: 320,
-      sparkSizes: [2.5, 2.5, 3.5],
-    }
-  };
-
-  let currentMonth = 3;
-  let drillOpen = true;
-
-  function updateMonth(n) {
-    currentMonth = n;
-    const d = monthData[n];
-
-    // Month tabs
-    document.querySelectorAll('.month-tab').forEach(function(tab, i) {
-      tab.classList.toggle('active', i + 1 === n);
-    });
-
-    // Month badge
-    document.getElementById('monthBadge').textContent = d.label;
-
-    // Status bar
-    document.getElementById('statusText').innerHTML = d.statusHtml;
-
-    // E1 engine card
-    var badge = document.getElementById('e1EngineBadge');
-    badge.textContent = d.e1EngineBadgeText;
-    badge.className = 'engine-badge ' + d.e1EngineBadgeClass;
-    document.getElementById('e1EngineOverride').innerHTML = d.e1EngineOverrideHtml;
-
-    // KPI: P@100
-    document.getElementById('kpiP100').textContent = d.p100;
-    var p100Delta = document.getElementById('kpiP100Delta');
-    p100Delta.textContent = d.p100Delta;
-    p100Delta.className = 'kpi-delta ' + d.p100DeltaClass;
-
-    // KPI: Conversion
-    document.getElementById('kpiConv').textContent = d.conv;
-    var convDelta = document.getElementById('kpiConvDelta');
-    convDelta.textContent = d.convDelta;
-    convDelta.className = 'kpi-delta ' + d.convDeltaClass;
-
-    // KPI: E1 override
-    document.getElementById('kpiE1Val').textContent = d.e1Val;
-    document.getElementById('kpiE1Delta').textContent = d.e1Delta;
-    document.getElementById('kpiE1Target').textContent = d.e1Target;
-
-    // KPI: Utilization donut
-    document.getElementById('donutArc').setAttribute('stroke-dasharray', d.utilFill + ' ' + circ);
-    document.getElementById('donutText').textContent = d.util;
-    document.getElementById('kpiUtilDelta').textContent = d.utilDelta;
-
-    // Override bar
-    document.getElementById('e1OverridePct').textContent = d.e1OverridePct + '%';
-    document.getElementById('e1OverrideBar').style.width = d.e1OverrideBarW + '%';
-
-    // Sparkline dots (both metrics share same active position)
-    ['p100', 'conv'].forEach(function(metric) {
-      for (var i = 1; i <= 3; i++) {
-        var dot = document.getElementById('spark-' + metric + '-' + i);
-        if (!dot) continue;
-        var isActive = i === n;
-        dot.setAttribute('r', d.sparkSizes[i - 1]);
-        dot.setAttribute('opacity', isActive ? '1' : '0.4');
-      }
-    });
-
-    // Chart indicator line
-    var indicator = document.getElementById('chartIndicator');
-    if (indicator) {
-      indicator.setAttribute('x1', d.chartX);
-      indicator.setAttribute('x2', d.chartX);
-    }
-
-    // Chart x-axis labels
-    [1, 2, 3].forEach(function(i) {
-      var el = document.getElementById('label-m' + i);
-      if (!el) return;
-      var isActive = i === n;
-      el.setAttribute('font-weight', isActive ? '700' : '400');
-      el.setAttribute('fill', isActive ? '#212529' : '#868e96');
-      el.textContent = 'M' + i + (isActive ? ' ←' : '');
-    });
-
-    // Action bar
-    document.getElementById('actionBarMonth').textContent = d.actionBarMonth;
+    overrideBadge: "Monitoring",
+    overrideBadgeClass: "warn",
+    overrideBars: [
+      { label: "Insufficient evidence", pct: 44, warn: false },
+      { label: "Clinical justification provided", pct: 33, warn: false },
+      { label: "Duplicate claim", pct: 14, warn: false },
+      { label: "Other", pct: 9, warn: false }
+    ],
+    drilldown: [
+      { specialty: "Cardiology", reviewed: 891, overrides: 112, rate: "12.6%", vs: "+2.1%", status: "warn" },
+      { specialty: "Orthopedics", reviewed: 634, overrides: 79, rate: "12.5%", vs: "+1.4%", status: "warn" },
+      { specialty: "Neurology", reviewed: 462, overrides: 51, rate: "11.0%", vs: "+0.6%", status: "ok" }
+    ],
+    drift: [
+      { feature: "claim_amount_zscore", baseline: "0.00", current: "0.04", psi: "0.011", status: "ok" },
+      { feature: "days_since_last_claim", baseline: "14.2", current: "15.1", psi: "0.018", status: "ok" },
+      { feature: "network_centrality", baseline: "0.42", current: "0.46", psi: "0.095", status: "warn" }
+    ]
+  },
+  3: {
+    label: "Month 3 (Oct 2026)",
+    statusClass: "warn",
+    statusText: "E1 override rate above baseline: Engine 1 showing 18.3% operator overrides vs. 12% baseline. Under investigation.",
+    engines: [
+      { id: "E1", name: "E1: Claim Anomaly", desc: "Detects statistical outliers in claim patterns vs. peer cohorts.", status: "warn", metrics: { precision: "92.1%", recall: "86.0%" } },
+      { id: "E2", name: "E2: Temporal Pattern", desc: "Identifies time-series anomalies in provider billing frequency.", status: "warn", metrics: { precision: "89.8%", recall: "82.4%" } },
+      { id: "E3", name: "E3: Network Graph", desc: "Surfaces coordinated fraud rings via provider relationship graph.", status: "ok", metrics: { precision: "90.6%", recall: "81.0%" } }
+    ],
+    kpis: {
+      precision: { val: "92.1%", delta: "2.1pp below baseline", deltaClass: "neg" },
+      conversion: { val: "29.7%", delta: "1.7pp below baseline", deltaClass: "neg" },
+      override: { val: "18.3%", delta: "6.3pp above 12% baseline", deltaClass: "neg", warn: true },
+      queue: { val: "81%", delta: "211 / 260 capacity", deltaClass: "neu" }
+    },
+    overrideBadge: "Above target",
+    overrideBadgeClass: "warn",
+    overrideBars: [
+      { label: "Cardiology: volume spike (not fraud signals)", pct: 38, warn: true },
+      { label: "Insufficient evidence", pct: 32, warn: false },
+      { label: "Clinical justification provided", pct: 18, warn: false },
+      { label: "Duplicate claim", pct: 8, warn: false },
+      { label: "Other", pct: 4, warn: false }
+    ],
+    drilldown: [
+      { specialty: "Cardiology", reviewed: 1024, overrides: 213, rate: "20.8%", vs: "+9.8%", status: "high" },
+      { specialty: "Orthopedics", reviewed: 648, overrides: 84, rate: "13.0%", vs: "+2.0%", status: "warn" },
+      { specialty: "Neurology", reviewed: 471, overrides: 49, rate: "10.4%", vs: "0.0%", status: "ok" },
+      { specialty: "Radiology", reviewed: 389, overrides: 41, rate: "10.5%", vs: "+0.5%", status: "ok" }
+    ],
+    drift: [
+      { feature: "claim_amount_zscore", baseline: "0.00", current: "0.09", psi: "0.024", status: "ok" },
+      { feature: "days_since_last_claim", baseline: "14.2", current: "16.3", psi: "0.058", status: "ok" },
+      { feature: "network_centrality", baseline: "0.42", current: "0.51", psi: "0.181", status: "warn" },
+      { feature: "specialty_risk_index", baseline: "0.31", current: "0.39", psi: "0.142", status: "warn" }
+    ]
   }
+};
 
-  function toggleDrillDown() {
-    drillOpen = !drillOpen;
-    document.getElementById('drillDownBody').classList.toggle('collapsed', !drillOpen);
-    document.getElementById('drillToggleBtn').textContent = drillOpen ? '▲ Collapse' : '▼ Expand';
-    var row = document.getElementById('e1OverrideRow');
-    if (row) row.classList.toggle('active', drillOpen);
-    showToast(
-      drillOpen ? 'E1 specialty breakdown expanded' : 'E1 drill-down collapsed',
-      'info', drillOpen ? '↗' : '↙'
-    );
-  }
+let currentMonth = 3;
 
-  function openRetrainingModal() {
-    document.getElementById('retrainingModal').classList.add('open');
-  }
+function updateMonth(m) {
+  currentMonth = m;
+  const d = monthData[m];
 
-  function closeModal() {
-    document.getElementById('retrainingModal').classList.remove('open');
-  }
+  // Update tabs
+  document.querySelectorAll('.month-tab').forEach((tab, i) => {
+    const active = (i + 1) === m;
+    tab.classList.toggle('active', active);
+    tab.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
 
-  function handleModalClick(e) {
-    if (e.target.id === 'retrainingModal') closeModal();
-  }
+  // Update nav label
+  document.getElementById('current-month-label').textContent = d.label;
 
-  function confirmRetraining() {
-    closeModal();
-    showToast('Retraining queued — E1 engine job submitted. ETA: 4–6 hours.', 'success', '✓');
-  }
+  // Update status bar
+  const sb = document.getElementById('status-bar');
+  sb.className = 'status-bar ' + (d.statusClass === 'warn' ? '' : d.statusClass);
+  document.getElementById('status-text').textContent = d.statusText;
 
-  function exportReport() {
-    showToast('Export started — Month ' + currentMonth + ' report generating as PDF.', 'info', '↓');
-  }
+  // Render engines
+  const eg = document.getElementById('engine-grid');
+  eg.innerHTML = d.engines.map(e => `
+    <div class="engine-card ${e.status === 'warn' ? 'warn' : ''}">
+      <div class="engine-card-head">
+        <div class="engine-dot ${e.status}" aria-hidden="true"></div>
+        <span class="engine-name">${e.name}</span>
+        <span class="engine-badge ${e.status === 'ok' ? 'ok' : 'warn'}">${e.status === 'ok' ? 'Ok' : 'Above target'}</span>
+      </div>
+      <p class="engine-desc">${e.desc}</p>
+      <div class="engine-metrics">
+        <div>
+          <p class="engine-metric-label">Precision</p>
+          <p class="engine-metric-val">${e.metrics.precision}</p>
+        </div>
+        <div>
+          <p class="engine-metric-label">Recall</p>
+          <p class="engine-metric-val">${e.metrics.recall}</p>
+        </div>
+      </div>
+    </div>
+  `).join('');
 
-  function viewAuditLog() {
-    var time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    showToast('Audit log: 142 entries · Last entry: ' + time, 'info', '📋');
-  }
+  // Render KPIs
+  const kpis = d.kpis;
+  const kg = document.getElementById('kpi-grid');
+  kg.innerHTML = `
+    <div class="kpi-card">
+      <p class="kpi-label">Precision@100</p>
+      <p class="kpi-val">${kpis.precision.val}</p>
+      <p class="kpi-delta ${kpis.precision.deltaClass}">${kpis.precision.delta}</p>
+      <svg class="sparkline" viewBox="0 0 120 40" aria-hidden="true">
+        <path class="spark-fill" d="M0 30 L20 26 L40 22 L60 28 L80 18 L100 14 L120 10 L120 40 L0 40 Z"/>
+        <path class="spark-line" d="M0 30 L20 26 L40 22 L60 28 L80 18 L100 14 L120 10"/>
+        <line class="spark-ref" x1="0" y1="24" x2="120" y2="24"/>
+      </svg>
+    </div>
+    <div class="kpi-card">
+      <p class="kpi-label">Case conversion rate</p>
+      <p class="kpi-val ok">${kpis.conversion.val}</p>
+      <p class="kpi-delta ${kpis.conversion.deltaClass}">${kpis.conversion.delta}</p>
+      <svg class="sparkline" viewBox="0 0 120 40" aria-hidden="true">
+        <path class="spark-fill-ok" d="M0 28 L20 25 L40 20 L60 26 L80 16 L100 12 L120 8 L120 40 L0 40 Z"/>
+        <path class="spark-line-ok" d="M0 28 L20 25 L40 20 L60 26 L80 16 L100 12 L120 8"/>
+      </svg>
+    </div>
+    <div class="kpi-card ${kpis.override.warn ? 'warn' : ''}">
+      <p class="kpi-label">E1 override rate</p>
+      <p class="kpi-val ${kpis.override.warn ? 'warn' : ''}">${kpis.override.val}</p>
+      <p class="kpi-delta ${kpis.override.deltaClass}">${kpis.override.delta}</p>
+    </div>
+    <div class="kpi-card">
+      <p class="kpi-label">Queue utilization</p>
+      <div class="donut-wrap">
+        <svg class="donut-svg" viewBox="0 0 52 52" aria-hidden="true">
+          <circle class="donut-track" cx="26" cy="26" r="20"/>
+          <circle class="donut-fill ${kpis.queue.warn ? 'warn' : ''}" cx="26" cy="26" r="20"
+            stroke-dasharray="${(parseInt(kpis.queue.val) / 100) * 125.6} 125.6"
+            stroke-dashoffset="31.4" transform="rotate(-90 26 26)"/>
+          <text class="donut-val" x="26" y="29">${kpis.queue.val}</text>
+        </svg>
+        <div>
+          <p class="kpi-val" style="font-size: var(--text-xl); margin-bottom: var(--space-2xs);">${kpis.queue.val}</p>
+          <p class="donut-meta">${kpis.queue.delta}</p>
+        </div>
+      </div>
+    </div>
+  `;
 
-  function showToast(message, type, icon) {
-    var container = document.getElementById('toastContainer');
-    var toast = document.createElement('div');
-    toast.className = 'toast toast-' + type;
-    toast.innerHTML = '<span class="toast-icon">' + icon + '</span><span>' + message + '</span>';
-    container.appendChild(toast);
-    requestAnimationFrame(function() {
-      requestAnimationFrame(function() { toast.classList.add('show'); });
-    });
-    setTimeout(function() {
-      toast.classList.remove('show');
-      setTimeout(function() { toast.remove(); }, 300);
-    }, 3500);
-  }
+  // Override bars
+  const overrideStatus = document.getElementById('override-status-badge');
+  overrideStatus.textContent = d.overrideBadge;
+  overrideStatus.className = 'override-badge ' + (d.overrideBadgeClass !== 'ok' ? 'warn' : '');
 
-  // Live refresh counter
-  var refreshMinutes = 0;
-  setInterval(function() {
-    refreshMinutes++;
-    var el = document.getElementById('refreshCounter');
-    if (el) el.textContent = 'Last refreshed: ' + refreshMinutes + ' min ago';
-  }, 60000);
+  const obs = document.getElementById('override-bars');
+  obs.innerHTML = d.overrideBars.map(b => `
+    <div class="bar-row">
+      <div class="bar-meta">
+        <span class="bar-label">${b.label}</span>
+        <span class="bar-pct">${b.pct}%</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill ${b.warn ? 'warn' : ''}" style="width: ${b.pct}%"></div>
+      </div>
+    </div>
+  `).join('');
 
-  document.addEventListener('DOMContentLoaded', function() { updateMonth(3); });
+  // Drilldown table
+  const dt = document.getElementById('drilldown-tbody');
+  dt.innerHTML = d.drilldown.map(r => `
+    <tr>
+      <td class="td-name">${r.specialty}</td>
+      <td>${r.reviewed.toLocaleString()}</td>
+      <td>${r.overrides.toLocaleString()}</td>
+      <td>${r.rate}</td>
+      <td>${r.vs}</td>
+      <td><span class="td-badge ${r.status}">${r.status === 'ok' ? 'Ok' : r.status === 'warn' ? 'Above target' : 'High'}</span></td>
+    </tr>
+  `).join('');
+
+  // Drift table
+  const driftT = document.getElementById('drift-tbody');
+  driftT.innerHTML = d.drift.map(r => `
+    <tr>
+      <td class="drift-feature">${r.feature}</td>
+      <td class="drift-val">${r.baseline}</td>
+      <td class="drift-val">${r.current}</td>
+      <td class="drift-val">${r.psi}</td>
+      <td><span class="td-badge ${r.status}">${r.status === 'ok' ? 'Ok' : 'Drift'}</span></td>
+    </tr>
+  `).join('');
+
+  // Hide drilldown table on month switch
+  document.getElementById('drilldown-table').hidden = true;
+  document.getElementById('override-expand-btn').textContent = 'Click to expand breakdown';
+}
+
+function toggleDrilldown() {
+  const dt = document.getElementById('drilldown-table');
+  const btn = document.getElementById('override-expand-btn');
+  const hidden = dt.hidden;
+  dt.hidden = !hidden;
+  btn.textContent = hidden ? 'Collapse breakdown' : 'Click to expand breakdown';
+}
+
+function openRetrainingModal() {
+  document.getElementById('retraining-modal').hidden = false;
+}
+
+function closeRetrainingModal() {
+  document.getElementById('retraining-modal').hidden = true;
+}
+
+function confirmRetrain() {
+  closeRetrainingModal();
+  showToast('Retraining scheduled for E2. Estimated start: Nov 2, 2026 02:00 UTC.', 'success');
+}
+
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast ' + type;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.transition = 'opacity 200ms';
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 200);
+  }, 4000);
+}
+
+// Close modal on overlay click
+document.getElementById('retraining-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeRetrainingModal();
+});
+
+// Close modal on Escape
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeRetrainingModal();
+});
+
+// Simulate last refresh update
+setInterval(() => {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2, '0');
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const s = String(now.getSeconds()).padStart(2, '0');
+  document.getElementById('last-refresh').textContent = `Last: ${h}:${m}:${s}`;
+}, 60000);
+
+// Init
+updateMonth(3);
 </script>
-
 </body>
 </html>
